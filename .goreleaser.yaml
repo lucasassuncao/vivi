@@ -1,0 +1,41 @@
+version: 2
+
+project_name: vivi
+
+builds:
+  - main: .
+    id: vivi
+    binary: vivi
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      # Version feeds `vivi --version`; DefaultRepo is what `vivi self-update`
+      # looks at, so a build without it can report a version but cannot update.
+      - "-s -w -X github.com/lucasassuncao/vivi/internal/cmd.Version={{.Version}} -X github.com/lucasassuncao/vivi/internal/cmd.DefaultRepo=lucasassuncao/{{.ProjectName}}"
+
+archives:
+  - formats: [binary]
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    files: []
+
+release:
+  github:
+    owner: lucasassuncao
+    name: vivi
+  draft: false
+  prerelease: auto
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot"

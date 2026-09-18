@@ -1,0 +1,63 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+coverage/
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# OS specific
+Thumbs.db
+Desktop.ini
+
+.claude
+CLAUDE.md
+/memory/
+archived/
+
+# Pinned tools installed by the Makefile
+.gobin/
+
+# Generated SBOM
+sbom.json
+
+# Superpowers documentation
+docs/superpowers/

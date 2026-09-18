@@ -1,0 +1,41 @@
+version: "2"
+linters:
+  enable:
+    - asciicheck
+    - dogsled
+    - dupl
+    - errorlint
+    - gocognit
+    - gocritic
+    - gocyclo
+    - misspell
+    - nakedret
+    - nestif
+    - nolintlint
+    - revive
+    - staticcheck
+    - unparam
+    - whitespace
+  settings:
+    gocognit:
+      min-complexity: 35
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

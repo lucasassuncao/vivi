@@ -1,0 +1,281 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # Repository hygiene, which is platform-independent and only worth doing once:
+  # formatting and dependency tidiness. The git-diff comparisons these rely on
+  # would only produce line-ending noise on Windows.
+  checks:
+    name: Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      # The Makefile builds its tools into .gobin; without this every job
+      # rebuilds them from source. Keyed on tools.mk, where they are pinned:
+      # keyed on the Makefile, a version bump would never miss the cache and CI
+      # would keep running the old tool.
+      - name: Cache pinned tools
+        uses: actions/cache@v6
+        with:
+          path: .gobin
+          key: gobin-${{ runner.os }}-${{ hashFiles('scripts/make/tools.mk') }}
+
+      - name: Check dependencies
+        run: |
+          go mod tidy
+          if ! git diff --exit-code; then
+            echo ""
+            echo "❌ go.mod or go.sum is out of date. Run 'go mod tidy' locally and commit the result."
+            exit 1
+          fi
+          echo "✅ Dependencies are up to date."
+
+      - name: Check formatting
+        run: |
+          make fmt
+          if ! git diff --exit-code; then
+            echo ""
+            echo "❌ Code is not formatted. Run 'make fmt' locally and commit the result."
+            exit 1
+          fi
+          echo "✅ Code is properly formatted."
+
+  # vivi ships a binary for linux, macOS and windows and says so on the README
+  # badge, so the suite has to run where it claims to work. There are no
+  # build-tagged per-OS files here; what differs is behaviour at runtime, and
+  # each of these is exercised by the suite:
+  #
+  #   * the clipboard, which has a different implementation per platform and
+  #     none at all on a headless Linux runner (the copy test skips there, and
+  #     this matrix is the only place that skip is not the whole story);
+  #   * self-update's asset matching, which branches on runtime.GOOS and only
+  #     takes its ".exe" path when the test itself runs on Windows;
+  #   * terminal rendering and path handling, which are where a TUI on Windows
+  #     usually diverges from one on Unix.
+  #
+  # Lint and security run inside the matrix rather than once, so that any
+  # analysis that is sensitive to the host platform is not judged by Linux alone.
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Cache pinned tools
+        uses: actions/cache@v6
+        with:
+          path: .gobin
+          key: gobin-${{ runner.os }}-${{ hashFiles('scripts/make/tools.mk') }}
+
+      - name: Lint
+        run: make lint
+
+      - name: Security
+        run: make security
+
+      - name: Test
+        run: make test-coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ matrix.os }}
+          path: coverage/
+          if-no-files-found: warn
+
+  # The SBOM and the vulnerability scan describe the dependency graph, which
+  # comes from go.mod and is the same everywhere. So this stays out of the OS
+  # matrix, unlike lint and security: three runners would build the same SBOM
+  # and download the vulnerability database three times to reach one answer.
+  #
+  # It is also its own job rather than a step inside Checks, because it fails
+  # differently. A red mark here usually means a CVE was published against a
+  # dependency, not that the commit broke something - the job can go red with
+  # nothing in the repo having changed.
+  supply-chain:
+    name: Supply chain
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      # syft and grype are slow to build for a scan that takes seconds.
+      - name: Cache pinned tools
+        uses: actions/cache@v6
+        with:
+          path: .gobin
+          key: gobin-${{ runner.os }}-${{ hashFiles('scripts/make/tools.mk') }}
+
+      # govulncheck is the gate that matters for a Go binary: it only reports
+      # advisories reachable from this module's code. It runs before the SBOM
+      # scan so its answer is in the log even when grype fails the job on an
+      # advisory nothing here can execute.
+      - name: Check reachable vulnerabilities
+        run: make govulncheck
+
+      - name: Scan dependencies
+        run: make vuln
+
+      # Uploaded even when the scan fails: the SBOM is written before grype
+      # runs, and it is what you need to triage the findings.
+      - name: Upload SBOM
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: sbom.json
+          if-no-files-found: warn
+
+  # The unit suite runs against the in-memory Vault; this job is the only place
+  # the request shapes are checked against a real server.
+  #
+  # It stays on Linux alone, and not for lack of ambition: GitHub only runs
+  # service containers on Linux runners, so there is no matrix to be had here.
+  # What this job checks is the wire protocol, which does not vary by client OS.
+  integration:
+    name: Integration
+    runs-on: ubuntu-latest
+
+    services:
+      vault:
+        # Pinned to the version the seeding CLI below downloads, and the one
+        # scripts/dev runs locally: a job that can go red on someone else's
+        # release is a job nobody trusts.
+        image: hashicorp/vault:1.20.4
+        ports:
+          - 8200:8200
+        env:
+          VAULT_DEV_ROOT_TOKEN_ID: root
+          VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+        options: >-
+          --cap-add=IPC_LOCK
+          --health-cmd "VAULT_ADDR=http://127.0.0.1:8200 vault status"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Seed Vault
+        env:
+          VAULT_ADDR: http://127.0.0.1:8200
+          VAULT_TOKEN: root
+        run: |
+          curl -fsSL -o vault.zip https://releases.hashicorp.com/vault/1.20.4/vault_1.20.4_linux_amd64.zip
+          unzip -q vault.zip && sudo mv vault /usr/local/bin/
+          sh scripts/dev/seed.sh
+
+      # 127.0.0.1 is not incidental: the suite creates and deletes paths, and
+      # refuses to run against anything that is not a localhost Vault.
+      - name: Integration tests
+        env:
+          VIVI_INTEGRATION: "1"
+          VAULT_ADDR: http://127.0.0.1:8200
+          VAULT_TOKEN: root
+        run: go test -count=1 ./internal/vault/
+
+  # The site: a static landing page and a docsify app that renders the same
+  # markdown this repository already carries in docs/. Nothing is generated at
+  # build time, so this job only assembles the directory and uploads it.
+  #
+  # It waits for Checks rather than the matrix: the site is documentation, and
+  # holding a docs fix behind three operating systems buys nothing.
+  pages:
+    name: Deploy GitHub Pages
+    needs: checks
+    # Never on a pull request: a deployment from an unmerged branch would
+    # overwrite the live site with it.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    # Job-level permissions replace the default for this job alone, so the
+    # token every other job runs with is untouched. contents:read is what
+    # checkout needs; the rest is what the Pages deployment needs.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    # Two deployments must never overlap, and cancelling one mid-publish can
+    # leave the site half-updated, so queue rather than cancel.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # docs/pages/ is the site root, so the markdown is copied into it: docsify
+      # reads it from there at runtime, while the repository keeps one copy of
+      # each page in docs/ where GitHub renders it.
+      #
+      # The images go beside the markdown, not beside the app: docsify resolves
+      # an image against basePath, the directory it reads the markdown from. So
+      # "images/x.gif" means docs/images/ in the repository and images/ at the
+      # site root here, and one spelling is right in an editor's preview, in a
+      # local docsify and in the deployed page alike.
+      - name: Prepare site content
+        run: |
+          cp docs/_sidebar.md docs/pages/
+          find docs -maxdepth 1 -name '*.md' -exec cp {} docs/pages/ \;
+          cp -r docs/images docs/pages/
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/pages/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

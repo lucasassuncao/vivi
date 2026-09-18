@@ -1,0 +1,18 @@
+# gofmt treats a CRLF file as unformatted, so every text file must arrive with
+# LF on every platform. Without this, a Windows checkout converts the whole
+# tree to CRLF and `make lint` rejects files that are perfectly fine in the
+# repository.
+* text=auto eol=lf
+
+# The seeder runs inside a Linux container: CRLF would break every line of it.
+*.sh text eol=lf
+Makefile text eol=lf
+
+# Assets git must never rewrite.
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.exe binary
+*.gz  binary
+*.zip binary

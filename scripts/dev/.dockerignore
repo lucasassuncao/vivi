@@ -1,0 +1,5 @@
+# The seed image copies one file. Everything else in this directory, the compose
+# file and the Dockerfile, would only be context the daemon reads and then
+# discards, and an edit to any of it busts the build cache.
+*
+!seed.sh

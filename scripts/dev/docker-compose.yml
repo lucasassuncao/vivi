@@ -1,0 +1,50 @@
+# A throwaway Vault for trying vivi out.
+#
+#   docker compose up -d
+#   export VAULT_ADDR=http://127.0.0.1:8200
+#   export VAULT_TOKEN=root
+#   vivi
+#
+# Dev mode keeps everything in memory: stopping the container throws away the
+# data, which is the point. Never point this at anything real.
+
+services:
+  vault:
+    # Pinned so the sandbox is the same Vault every time, and the same one CI
+    # runs the integration suite against. Bump it here, in the seeder image and
+    # in the CI workflow together.
+    image: hashicorp/vault:1.20.4
+    container_name: vivi-vault
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_ADDR: http://127.0.0.1:8200
+    command: server -dev
+    healthcheck:
+      # The seeder must not start before the dev server has unsealed itself.
+      test: ["CMD", "vault", "status"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 2s
+
+  seed:
+    # Built rather than bind-mounted, so the same file works from the host and
+    # from inside the devcontainer, where the daemon is the host's and cannot
+    # see /workspaces. Dockerfile explains it. `make vault-up` passes
+    # --build, so an edit to seed.sh takes effect on the next run.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vivi-vault-seed
+    depends_on:
+      vault:
+        condition: service_healthy
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: root
+    restart: "no"
