@@ -1,6 +1,7 @@
 package secrets
 
 import (
+	"github.com/lucasassuncao/vivi/internal/tui/ui"
 	"strings"
 	"testing"
 
@@ -53,6 +54,7 @@ func TestWriteKeysRefuseOutLoud(t *testing.T) {
 		{"e", "edit"},
 		{"a", "create"},
 		{"d", "delete"},
+		{"M", "delete metadata"},
 	} {
 		h := readOnlyHarness(t, app.ReadOnlyAlways)
 		h.open("kv/app/prod/db")
@@ -70,9 +72,9 @@ func TestWriteKeysRefuseOutLoud(t *testing.T) {
 	}
 }
 
-// The version list has its own four, and they are the destructive ones.
+// The version list has its own three, and they are the destructive ones.
 func TestVersionKeysRefuseInAReadOnlySession(t *testing.T) {
-	for _, key := range []string{"b", "u", "D", "M"} {
+	for _, key := range []string{"b", "u", "D"} {
 		h := readOnlyHarness(t, app.ReadOnlyAlways)
 		h.open("kv/app/prod/db")
 		h.press("V")
@@ -101,9 +103,9 @@ func TestTheLegendDropsWritesInAReadOnlySession(t *testing.T) {
 
 	writes := map[string]bool{}
 	for _, e := range keys {
-		writes[e.Key] = e.Writes
+		writes[e.Help().Key] = e.Needs == ui.CapWrite
 	}
-	for _, key := range []string{"b", "u", "D", "M"} {
+	for _, key := range []string{"b", "u", "D"} {
 		if !writes[key] {
 			t.Errorf("the version legend does not mark %q as a write, so nothing will drop it", key)
 		}

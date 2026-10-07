@@ -5,6 +5,9 @@ package activity
 
 import (
 	"fmt"
+	"github.com/lucasassuncao/bezel/draw"
+	"github.com/lucasassuncao/bezel/layout"
+	"github.com/lucasassuncao/bezel/legend"
 	"strings"
 	"time"
 
@@ -84,7 +87,7 @@ func (m *Model) RenderList(width, height int, ctx ui.Context) string {
 			"no writes in this session",
 			"edits, deletes and rollbacks are recorded here as you make them")
 	}
-	start := ui.ScrollStart(m.cursor, len(m.entries), height)
+	start := layout.ScrollStart(m.cursor, len(m.entries), height)
 	var b strings.Builder
 	for i := start; i < len(m.entries) && i < start+height; i++ {
 		e := m.entries[i]
@@ -97,7 +100,7 @@ func (m *Model) RenderList(width, height int, ctx ui.Context) string {
 			status = st.ErrBanner.Render("✗ failed")
 		}
 		line := fmt.Sprintf("%s%s %-16s %s", cursor, e.At.Format("15:04:05"), e.Op, status)
-		b.WriteString(ui.Truncate(line, width))
+		b.WriteString(draw.Cut(line, width))
 		b.WriteString("\n")
 	}
 	return b.String()
@@ -118,7 +121,7 @@ func (m *Model) RenderDetail(width int, ctx ui.Context) string {
 	}
 	if e.Err != nil {
 		b.WriteString("\n")
-		b.WriteString(st.ErrBanner.Render(ui.Truncate(ui.Sanitize(e.Err.Error()), width)))
+		b.WriteString(st.ErrBanner.Render(draw.Cut(draw.Sanitize(e.Err.Error()), width)))
 	}
 	return b.String()
 }
@@ -146,12 +149,12 @@ func (m *Model) moveTo(i int) tea.Cmd {
 	return ui.Emit(ui.ScrollTopMsg{})
 }
 
-func (m *Model) Legend(ctx ui.Context) (status string, keys []ui.LegendEntry) {
+func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
 	status = fmt.Sprintf("%d writes this session", len(m.entries))
 	if ctx.Focus == ui.FocusDetail {
 		return status, ui.ScrollLegend()
 	}
-	return status, ui.ListLegend("move", ui.Entry("→/enter", "detail"))
+	return status, ui.ListLegend("move", legend.New("→/enter", "detail"))
 }
 
 func (m *Model) Help(ctx ui.Context) ui.HelpSection {
@@ -172,8 +175,9 @@ func (m *Model) Overlay(ui.Context) string { return "" }
 // arrows scroll it.
 func (m *Model) KeyDetail(tea.KeyPressMsg, ui.Context) (tea.Cmd, bool) { return nil, false }
 
-func (m *Model) Captures() bool { return false }
-func (m *Model) Blur()          {}
+func (m *Model) Captures() bool       { return false }
+func (m *Model) ScreenCaptures() bool { return false }
+func (m *Model) Blur()                {}
 
 // CopyRows is empty on purpose. The activity log is this session's own record.
 // There is no path on a server behind it, so there is nothing here to address.

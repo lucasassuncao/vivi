@@ -86,11 +86,10 @@ func TestTabCompletesTheOnlyCandidate(t *testing.T) {
 	h.typeCommand("rev")
 	h.press("tab")
 
-	c, ok := h.m.mode.(commanding)
-	if !ok {
+	if h.mode() != "command" {
 		t.Fatalf("tab closed the command line: mode is %q", h.mode())
 	}
-	if got := c.line.input.Value(); got != "reveal" {
+	if got := h.commandLine(); got != "reveal" {
 		t.Errorf("tab completed to %q, want reveal", got)
 	}
 }
@@ -103,8 +102,7 @@ func TestTabLeavesRoomForAnArgument(t *testing.T) {
 	h.typeCommand("got")
 	h.press("tab")
 
-	c := h.m.mode.(commanding)
-	if got := c.line.input.Value(); got != "goto " {
+	if got := h.commandLine(); got != "goto " {
 		t.Errorf("tab completed to %q, want %q", got, "goto ")
 	}
 }
@@ -116,15 +114,11 @@ func TestAnAmbiguousLineStaysOpenAndSaysSo(t *testing.T) {
 	h.open("kv/app/prod/db")
 	h.runCommand("cop")
 
-	c, ok := h.m.mode.(commanding)
-	if !ok {
+	if h.mode() != "command" {
 		t.Fatalf("an ambiguous line closed the command line: mode is %q", h.mode())
 	}
-	if !strings.Contains(c.line.err, "ambiguous") {
-		t.Errorf("the ambiguity was not reported: %q", c.line.err)
-	}
-	if !strings.Contains(h.view(), "ambiguous") {
-		t.Error("the ambiguity is not on screen")
+	if !strings.Contains(h.view(), "cop is ambiguous") {
+		t.Errorf("the ambiguity is not on screen: %q", h.view())
 	}
 }
 
@@ -135,9 +129,8 @@ func TestArrowsPickFromTheList(t *testing.T) {
 	h.typeCommand("copy-")
 
 	h.press("down") // the first candidate, whichever name sorts first
-	c := h.m.mode.(commanding)
-	if c.line.cursor != 0 {
-		t.Fatalf("down did not land on the first candidate: cursor is %d", c.line.cursor)
+	if !strings.Contains(h.view(), "› :copy-") {
+		t.Fatalf("down did not highlight a candidate: %q", h.view())
 	}
 
 	h.press("enter")
@@ -153,8 +146,8 @@ func TestNothingIsPickedUntilTheUserPicks(t *testing.T) {
 	h.open("kv/app/prod/db")
 	h.typeCommand("copy-")
 
-	if c := h.m.mode.(commanding); c.line.cursor != -1 {
-		t.Errorf("a candidate was highlighted before the user chose one: cursor is %d", c.line.cursor)
+	if strings.Contains(h.view(), "› :") {
+		t.Errorf("a candidate was highlighted before the user chose one: %q", h.view())
 	}
 }
 
@@ -167,8 +160,8 @@ func TestTypingClearsThePick(t *testing.T) {
 	h.press("down")
 	h.typeText("p")
 
-	if c := h.m.mode.(commanding); c.line.cursor != -1 {
-		t.Errorf("the pick survived a keystroke that changed the list: cursor is %d", c.line.cursor)
+	if strings.Contains(h.view(), "› :") {
+		t.Errorf("the pick survived a keystroke that changed the list: %q", h.view())
 	}
 }
 
@@ -180,8 +173,8 @@ func TestACommandThatTakesNoArgumentRefusesOne(t *testing.T) {
 	if h.m.secretsTab.State().Revealed != 0 {
 		t.Error("the command ran despite the argument it does not take")
 	}
-	if !strings.Contains(h.m.banner, "takes no argument") {
-		t.Errorf("nothing said why: banner is %q", h.m.banner)
+	if !strings.Contains(h.m.banner(), "takes no argument") {
+		t.Errorf("nothing said why: banner is %q", h.m.banner())
 	}
 }
 
@@ -192,8 +185,8 @@ func TestUnknownCommandReportsAndCloses(t *testing.T) {
 	if h.mode() != "browse" {
 		t.Errorf("an unknown command left the line open: mode is %q", h.mode())
 	}
-	if !strings.Contains(h.m.banner, "unknown command") {
-		t.Errorf("the failure was not reported: banner is %q", h.m.banner)
+	if !strings.Contains(h.m.banner(), "unknown command") {
+		t.Errorf("the failure was not reported: banner is %q", h.m.banner())
 	}
 }
 
@@ -206,8 +199,8 @@ func TestAnEmptyLineJustCloses(t *testing.T) {
 	if h.mode() != "browse" {
 		t.Errorf("an empty line did not close: mode is %q", h.mode())
 	}
-	if h.m.banner != "" {
-		t.Errorf("an empty line complained: %q", h.m.banner)
+	if h.m.banner() != "" {
+		t.Errorf("an empty line complained: %q", h.m.banner())
 	}
 }
 
@@ -283,11 +276,11 @@ func TestGotoReportsWhyItCouldNotArrive(t *testing.T) {
 			if got := h.m.secretsTab.State().PendingGoto; got != "" {
 				t.Errorf("the walk is still waiting on a listing: %q", got)
 			}
-			if !h.m.bannerErr {
-				t.Errorf("the walk failed and said nothing: banner is %q", h.m.banner)
+			if !h.m.bannerIsError() {
+				t.Errorf("the walk failed and said nothing: banner is %q", h.m.banner())
 			}
-			if tt.says != "" && !strings.Contains(h.m.banner, tt.says) {
-				t.Errorf("the banner does not name %q: %q", tt.says, h.m.banner)
+			if tt.says != "" && !strings.Contains(h.m.banner(), tt.says) {
+				t.Errorf("the banner does not name %q: %q", tt.says, h.m.banner())
 			}
 		})
 	}
@@ -336,8 +329,8 @@ func TestTabCommandNamesTheTabsItKnows(t *testing.T) {
 	if h.m.tab != tabSecrets {
 		t.Errorf("an unknown tab name changed the tab anyway: on %v", h.m.tab)
 	}
-	if !strings.Contains(h.m.banner, "secrets") {
-		t.Errorf("the valid names were not offered: banner is %q", h.m.banner)
+	if !strings.Contains(h.m.banner(), "secrets") {
+		t.Errorf("the valid names were not offered: banner is %q", h.m.banner())
 	}
 }
 
@@ -368,8 +361,8 @@ func TestVersionCommandRefusesAVersionWithNoData(t *testing.T) {
 	if now := h.m.secretsTab.State().SecretVersion; now != before {
 		t.Errorf("a destroyed version was loaded anyway: now on v%d", now)
 	}
-	if !strings.Contains(h.m.banner, "no data") {
-		t.Errorf("nothing said why: banner is %q", h.m.banner)
+	if !strings.Contains(h.m.banner(), "no data") {
+		t.Errorf("nothing said why: banner is %q", h.m.banner())
 	}
 }
 
@@ -404,4 +397,44 @@ func candidateLine(view, name string) string {
 		}
 	}
 	return ""
+}
+
+// A listing answering while the palette is open is the tab's, not the palette's.
+func TestAnAnswerLandingUnderThePaletteReachesTheTab(t *testing.T) {
+	h := newHarness(t)
+	h.open("kv/app/prod/db")
+	h.press(":")
+	// The reload drops the tree and refetches while the palette is up.
+	h.run(h.m.reloadCurrent())
+	if h.mode() != "command" {
+		t.Fatalf("the answer closed the palette: mode is %q", h.mode())
+	}
+	if len(h.visiblePaths()) == 0 {
+		t.Error("the listing answered under the palette never reached the tree")
+	}
+}
+
+// A generated copy name that is not showing now is refused, not unknown.
+func TestAHiddenCopyCommandIsNotAvailableHere(t *testing.T) {
+	h := newHarness(t)
+	h.runCommand("copy-version-command")
+	if !strings.Contains(h.m.banner(), "copy-version-command is not available here") {
+		t.Errorf("banner is %q", h.m.banner())
+	}
+}
+
+// A command that left its scope between enter and its run refuses to run.
+func TestACommandOutOfScopeAtRunTimeRefuses(t *testing.T) {
+	h := newHarness(t) // nothing selected: reveal has nothing to act on
+	var reveal command
+	for _, c := range commands {
+		if c.name == "reveal" {
+			reveal = c
+		}
+	}
+	_, cmd := h.m.Update(commandMsg{c: reveal})
+	h.run(cmd)
+	if !strings.Contains(h.m.banner(), "reveal is not available here") {
+		t.Errorf("an out-of-scope command ran or said nothing: banner is %q", h.m.banner())
+	}
 }

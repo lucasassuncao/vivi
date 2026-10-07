@@ -6,7 +6,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/lucasassuncao/vivi/internal/tui/ui"
+	"github.com/lucasassuncao/bezel/draw"
+	"github.com/lucasassuncao/bezel/layout"
+	"github.com/lucasassuncao/bezel/shell"
 )
 
 // The smallest terminal vivi will draw into. Below either number the bottom of
@@ -26,9 +28,9 @@ func (m *Model) View() tea.View {
 	return v
 }
 
-// render is the whole screen, and nothing but the order it is assembled in.
-// Everything it calls lives with the component that owns it; what stays here is
-// the one decision that is nobody's: which of them is on screen right now.
+// render is the whole screen: the shell draws the chrome, the panes and its
+// own overlays; what stays here is the tab's overlay, which the shell cannot
+// see because it belongs to the tab.
 func (m *Model) render() string {
 	// A panic while drawing is as fatal as one while updating, and it is the
 	// one that repeats: it fires on every frame from then on. Same barrier.
@@ -44,44 +46,36 @@ func (m *Model) render() string {
 		return m.tooSmall()
 	}
 
-	header := m.renderHeader()
-	tabs := m.renderTabs()
-	bodyHeight := m.bodyHeight()
-
-	// Each mode hands its renderer what it needs; what is checked is that it
-	// brought anything at all, since the panes underneath are always a true
-	// answer. A missing pointer here fails on every frame from then on.
-	var body string
-	switch mode := m.mode.(type) {
-	case showingHelp:
-		body = m.float(m.renderHelp(bodyHeight), bodyHeight)
-	case showingToken:
-		body = m.float(m.renderToken(bodyHeight), bodyHeight)
-	case commanding:
-		if mode.line == nil {
-			break
-		}
-		body = m.renderCmdline(mode.line, bodyHeight)
-	}
-	// Then whatever the tab itself has up. The shell centres it over the panes,
-	// which is the half of the drawing a tab cannot do: the panes are here.
-	if body == "" {
-		if over := m.currentTab().Overlay(m.contextIn(bodyHeight)); over != "" {
-			body = m.float(over, bodyHeight)
+	out := m.sh.View(m.panes())
+	// A tab's modal - a confirmation, a form, a diff - floats over the panes
+	// but under the shell's own panels, which answer for themselves.
+	if m.browsing() {
+		if over := m.currentTab().Overlay(m.contextIn(m.bodyHeight())); over != "" {
+			body := m.sh.Body()
+			over = draw.FitBlock(over, body.W, body.H)
+			w, h := draw.BlockSize(over)
+			out = draw.Composite(over, out, body.X+max(0, (body.W-w)/2), body.Y+max(0, (body.H-h)/2))
 		}
 	}
-	if body == "" {
-		body = m.renderPanes(bodyHeight)
+	return out
+}
+
+// panes is what goes inside the shell's panels this frame. The reference panel
+// is only handed over when the layout gave it rows.
+func (m *Model) panes() map[string]shell.Pane {
+	left, right := m.currentTab().Titles()
+	panes := map[string]shell.Pane{
+		paneList: {Title: draw.Sanitize(left), Body: func(r layout.Rect) string {
+			return m.renderList(r.W, r.H)
+		}},
+		paneDetail: {Title: draw.Sanitize(right), Body: func(layout.Rect) string { return m.detailView() }},
 	}
-
-	// The footer is rendered last because it reports on the body: the scroll
-	// position it shows comes from the viewport the body just filled.
-	footer := m.renderFooter()
-
-	// The final clip is the guarantee: whatever any section decided, the screen
-	// is never taller than the terminal. On a window too small to hold header,
-	// tabs, body and footer at once, the bottom is what gives.
-	return clipHeight(strings.Join([]string{header, "", tabs, "", body, footer}, "\n"), m.height)
+	if m.sh.Rect(paneCopy) != (layout.Rect{}) {
+		panes[paneCopy] = shell.Pane{Title: copyPanelTitle, Body: func(r layout.Rect) string {
+			return strings.Join(m.copyLines(r.W), "\n")
+		}}
+	}
+	return panes
 }
 
 // tooSmall is the whole screen when the terminal cannot hold the app. It names
@@ -89,11 +83,39 @@ func (m *Model) render() string {
 // a notice about a short screen must not be the thing overflowing it.
 func (m *Model) tooSmall() string {
 	lines := []string{
-		ui.Truncate(m.st.Warn.Render("terminal too small"), m.width),
-		ui.Truncate(m.st.Dim.Render(fmt.Sprintf("need %d×%d", minTerminalWidth, minTerminalHeight)), m.width),
+		draw.Cut(m.st.Warn.Render("terminal too small"), m.width),
+		draw.Cut(m.st.Dim.Render(fmt.Sprintf("need %d×%d", minTerminalWidth, minTerminalHeight)), m.width),
 	}
-	return clipHeight(
+	return draw.FitBlock(
 		lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, strings.Join(lines, "\n")),
-		m.height,
+		m.width, m.height,
 	)
+}
+
+// renderList is the left pane of the active tab, filled while rendering.
+func (m *Model) renderList(width, height int) string {
+	return m.currentTab().RenderList(width, height, m.uiContext())
+}
+
+// renderDetail is the right pane of the active tab, filled from syncDetail.
+func (m *Model) renderDetail(width int) string {
+	return m.currentTab().RenderDetail(width, m.uiContext())
+}
+
+// detailView is the detail viewport, with "↓ N more lines" on the row
+// syncDetail kept for it while anything is below the pane.
+func (m *Model) detailView() string {
+	rest := m.detail.TotalLineCount() - m.detail.YOffset() - m.detail.Height()
+	if m.detail.Height() <= 0 || rest <= 0 {
+		return m.detail.View()
+	}
+	return m.detail.View() + "\n" + m.st.Dim.Render(moreLines(rest))
+}
+
+// moreLines is the count under a pane, singular for one.
+func moreLines(n int) string {
+	if n == 1 {
+		return "  ↓ 1 more line"
+	}
+	return fmt.Sprintf("  ↓ %d more lines", n)
 }

@@ -1,6 +1,7 @@
 package policies
 
 import (
+	"github.com/lucasassuncao/bezel/theme"
 	"strings"
 	"testing"
 
@@ -12,7 +13,7 @@ func TestHCLHighlightingPreservesTheText(t *testing.T) {
 	// escapes wherever it runs, and the terminal's own profile is applied when
 	// the frame is written out. So the escapes are here to strip even with no
 	// TTY in sight.
-	st := ui.NewStyles(ui.Colors{}, true)
+	st := ui.NewStyles(theme.Theme{}, true)
 	doc := "# a comment\npath \"kv/data/app/*\" {\n  capabilities = [\"read\", \"list\"]\n  max_ttl = 3600\n}\n"
 
 	highlighted := highlight(st, doc)

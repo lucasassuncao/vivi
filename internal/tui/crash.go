@@ -80,9 +80,7 @@ func (m *Model) crashNote() string {
 
 	fmt.Fprintf(&b, "tab: %s\n", tabNames[min(max(int(m.tab), 0), len(tabNames)-1)])
 	fmt.Fprintf(&b, "size: %dx%d\n", m.width, m.height)
-	if m.mode != nil {
-		fmt.Fprintf(&b, "mode: %s\n", m.mode.Name())
-	}
+	fmt.Fprintf(&b, "mode: %s\n", m.modeName())
 	// The rest is the Secrets tab's: where the cursor was, and what was typed
 	// into an editor and not yet saved. It is the only tab with unsaved work.
 	b.WriteString(m.secretsTab.CrashNote())

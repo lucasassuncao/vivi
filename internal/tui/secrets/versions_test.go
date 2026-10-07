@@ -157,6 +157,50 @@ func TestDeleteFromTheTreeIgnoresAClosedVersionListCursor(t *testing.T) {
 	}
 }
 
+// M takes the secret under the tree cursor, and only there: the version list
+// and the pane both leave it alone.
+func TestDestroySecretRunsFromTheTree(t *testing.T) {
+	h := newHarness(t)
+	h.open("kv/app/prod/db")
+
+	h.press("V", "M")
+	if h.modal() != nil {
+		t.Fatal("M still opens a modal from the version list")
+	}
+	h.press("esc")
+
+	h.press("M")
+	if h.modal() == nil || !h.modal().danger {
+		t.Fatal("M in the tree must open the strong confirmation")
+	}
+	h.typeText("db")
+	h.press("enter")
+
+	if _, _, err := h.server.Versions(t.Context(), "kv", "app/prod/db"); err == nil {
+		t.Fatal("the secret still has a history after M")
+	}
+}
+
+// v1 keeps no metadata, so M has nothing to remove there.
+func TestDestroySecretIsNotOfferedOnKV1(t *testing.T) {
+	h := newHarness(t)
+	h.open("legacy/old/app")
+
+	h.press("M")
+	if h.modal() != nil {
+		t.Fatal("M opened a modal on a KV v1 secret")
+	}
+	_, keys := h.m.Legend(h.ctx)
+	for _, e := range keys {
+		if e.Help().Key == "M" {
+			t.Fatal("the legend offers M on a KV v1 secret")
+		}
+		if e.Help().Key == "d" && e.Help().Desc != "delete" {
+			t.Fatalf("a KV v1 delete is final, but the legend says %q", e.Help().Desc)
+		}
+	}
+}
+
 func (h *harness) currentVersionReadable() bool {
 	v := h.m.currentVersionInfo()
 	return v != nil && v.Readable()

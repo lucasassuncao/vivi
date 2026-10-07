@@ -24,7 +24,12 @@ type filtering struct{}
 
 type editing struct{ editor *editor }
 
-type confirming struct{ confirmation *confirmation }
+// confirming is a modal over under, the mode it opened from: the legend stays
+// under's, since a modal names its own keys inside its box.
+type confirming struct {
+	confirmation *confirmation
+	under        mode
+}
 
 // choosingVersion is the version list over the current secret.
 type choosingVersion struct{}
@@ -54,7 +59,7 @@ type Model struct {
 
 	mode mode
 
-	tree        tree
+	tree        forest
 	filterInput textinput.Model
 
 	// The secret the detail pane is drawing, and its history. This is what is on
@@ -110,6 +115,9 @@ type Model struct {
 	// most likely to introduce the regression this whole move exists to avoid.
 	st            ui.Styles
 	width, height int
+	// body is the pane height Resize was given. A key's context carries the
+	// terminal's height instead (measuring the body there is a cycle).
+	body          int
 	focus         ui.Focus
 	access        app.Access
 	readOnly      app.ReadOnlyPolicy
@@ -159,7 +167,12 @@ func (m *Model) drain(cmd tea.Cmd) tea.Cmd {
 }
 
 // bodyHeight is the pane the tab is drawing into, which the shell measured.
-func (m *Model) bodyHeight() int { return m.height }
+func (m *Model) bodyHeight() int {
+	if m.body > 0 {
+		return m.body
+	}
+	return m.height
+}
 
 // notify, fail and failWith are the shell's footer, reached from here. They
 // keep their old names and old shapes so the call sites did not have to move

@@ -80,6 +80,7 @@ So `:copy` is never ambiguous, `:cop` is, and `:del` resolves to nothing while `
 | `:edit` | `e` | a secret is loaded |
 | `:create` | `a` | anywhere in a KV mount (a secret means: beside it) |
 | `:delete` | `d` | the cursor is on a secret |
+| `:delete-metadata` | `M` | the cursor is on a KV v2 secret |
 | `:filter <pattern>` | `/` | always, on this tab |
 
 #### The Command Reference lines
@@ -120,7 +121,6 @@ Reached with `:versions` or `v`.
 | `:rollback` | `b` | always (says so when there is nothing to restore) |
 | `:undelete` | `u` | the selected version is soft-deleted |
 | `:destroy` | `D` | the selected version is not already destroyed |
-| `:delete-metadata` | `M` | a secret is selected |
 
 The destructive ones still go through the confirmations they always did. `:destroy` and `:delete-metadata` are irreversible in Vault, and typing the name out is not treated as consent.
 

@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"slices"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -70,7 +69,8 @@ func always(*Model) bool { return true }
 // browsingTab reports that a tab is in front of the user, rather than a modal
 // or the version list.
 func browsingTab(m *Model, t tab) bool {
-	return m.tab == t && browseModeIs[browsing](m)
+	// The command line is judged against the tab it was opened over.
+	return m.tab == t && (m.showingCommands() || m.browsing())
 }
 
 func onPoliciesTab(m *Model) bool { return browsingTab(m, tabPolicies) }
@@ -124,7 +124,7 @@ var commands = []command{
 	// Two entries and not one, because "d" takes what the cursor is on and the
 	// cursor is on a field in the pane. One command wearing both meanings would
 	// have a title that is wrong in one of the two places.
-	{name: "delete", key: "d", title: "delete the secret",
+	{name: "delete", key: "d", title: "soft-delete the secret (on KV v1, for good)",
 		scope: func(m *Model) bool {
 			return selectedSecret(m) && m.focus != ui.FocusDetail && writable(m)
 		},
@@ -134,6 +134,11 @@ var commands = []command{
 			return hasField(m) && m.focus == ui.FocusDetail && writable(m)
 		},
 		run: onSecrets((*secrets.Model).ConfirmDeleteField)},
+	{name: "delete-metadata", key: "M", title: "destroy the secret and its whole history",
+		scope: func(m *Model) bool {
+			return onSecretsTab(m) && m.secretsTab.SelectedVersioned() && m.focus != ui.FocusDetail && writable(m)
+		},
+		run: onSecrets((*secrets.Model).ConfirmDeleteMetadata)},
 
 	// Policies. The secrets tab's line is labelled "policy-path", so its
 	// generated ":copy-policy-path" and this ":copy-policy" never collide.
@@ -167,9 +172,6 @@ var commands = []command{
 			return onVersionList(m) && v != nil && !v.Destroyed && writable(m)
 		},
 		run: onSecrets((*secrets.Model).ConfirmDestroy)},
-	{name: "delete-metadata", key: "M", title: "delete the secret and its whole history",
-		scope: func(m *Model) bool { return onVersionList(m) && m.secretsTab.HasSelection() && writable(m) },
-		run:   onSecrets((*secrets.Model).ConfirmDeleteMetadata)},
 
 	// Auth.
 	{name: "role-policy", key: "p", title: "go to the policy this role grants",
@@ -196,7 +198,7 @@ var commands = []command{
 }
 
 // copyRowNames is every command a Command Reference line can generate. Only
-// lookup reads it, so that an unavailable ":copy-metadata-command" says it is
+// actions reads it, so that an unavailable ":copy-metadata-command" says it is
 // not available here instead of reading as a typo. A name missing from it costs
 // a worse error message and nothing else.
 var copyRowNames = []string{
@@ -226,136 +228,11 @@ func (m *Model) copyCommands() []command {
 			// value - the panel already has them on screen - and seeing what
 			// landed on the clipboard is the whole confirmation.
 			run: func(m *Model, _ string) tea.Cmd {
-				return m.copyToClipboard("copy "+label, "copied: "+text, text)
+				return m.sh.Copy(text, "copied: "+text, "copy "+label)
 			},
 		})
 	}
 	return out
-}
-
-// available is what can run right now, in alphabetical order. The palette is
-// looked up by name and narrowed by prefix, so the name is what the eye follows
-// and a family shares a place: the generated copies land beside ":copy" without
-// being put there, and the list does not move under a cursor when the set
-// changes with it.
-func (m *Model) available() []command {
-	out := make([]command, 0, len(commands))
-	for _, c := range commands {
-		if c.scope(m) {
-			out = append(out, c)
-		}
-	}
-	out = append(out, m.copyCommands()...)
-
-	slices.SortFunc(out, func(a, b command) int { return strings.Compare(a.name, b.name) })
-	return out
-}
-
-// candidates is what an unfinished query could still become, narrowed to what
-// can run. A query with a space in it has already named its command, so only
-// the word before the space is matched: ":goto kv/" is still a match for goto.
-func (m *Model) candidates(query string) []command {
-	name, _ := splitCommand(query)
-
-	out := make([]command, 0, len(commands))
-	for _, c := range m.available() {
-		if strings.HasPrefix(c.name, name) {
-			out = append(out, c)
-		}
-	}
-	return out
-}
-
-// splitCommand cuts a typed line into the command name and its argument. The
-// argument keeps its inner spaces; only the first gap separates the two.
-func splitCommand(line string) (name, arg string) {
-	line = strings.TrimPrefix(strings.TrimSpace(line), ":")
-	name, arg, found := strings.Cut(line, " ")
-	if !found {
-		return name, ""
-	}
-	return name, strings.TrimSpace(arg)
-}
-
-// resolve turns a typed line into the command to run. Some names are prefixes
-// of others, so the order is fixed: exact match, then unique prefix, then
-// nothing. Without the first ":copy" is unrunnable; without the last ":d" fires.
-func (m *Model) resolve(line string) (command, string, error) {
-	name, arg := splitCommand(line)
-	if name == "" {
-		return command{}, "", emptyLineError{}
-	}
-
-	var prefix []command
-	for _, c := range m.available() {
-		if c.name == name {
-			return c, arg, nil
-		}
-		if strings.HasPrefix(c.name, name) {
-			prefix = append(prefix, c)
-		}
-	}
-
-	switch len(prefix) {
-	case 1:
-		return prefix[0], arg, nil
-	case 0:
-		// A command that exists but cannot run here is a different mistake from
-		// one that does not exist: "reveal is not available here" is actionable,
-		// "unknown command: reveal" sends them hunting a typo that is not there.
-		if c, ok := lookup(name); ok {
-			return command{}, "", unavailableCommandError{name: c.name}
-		}
-		return command{}, "", unknownCommandError{name: name}
-	default:
-		return command{}, "", ambiguousPrefixError{name: name, matches: prefix}
-	}
-}
-
-// lookup finds a command by exact name regardless of whether it can run. The
-// generated copies are matched against their names alone, since here the
-// question is only whether the name exists at all.
-func lookup(name string) (command, bool) {
-	for _, c := range commands {
-		if c.name == name {
-			return c, true
-		}
-	}
-	for _, generated := range copyRowNames {
-		if name == generated {
-			return command{name: name}, true
-		}
-	}
-	return command{}, false
-}
-
-// The failures resolve reports. They are types rather than sentinel values
-// because each carries what the message needs to name, and the command line
-// treats one of them differently from the rest.
-type emptyLineError struct{}
-
-func (emptyLineError) Error() string { return "no command" }
-
-type unknownCommandError struct{ name string }
-
-func (e unknownCommandError) Error() string { return "unknown command: " + e.name }
-
-type unavailableCommandError struct{ name string }
-
-func (e unavailableCommandError) Error() string { return e.name + " is not available here" }
-
-type ambiguousPrefixError struct {
-	name    string
-	matches []command
-}
-
-func (e ambiguousPrefixError) Error() string {
-	names := make([]string, 0, len(e.matches))
-	for _, c := range e.matches {
-		names = append(names, c.name)
-	}
-	slices.Sort(names)
-	return e.name + " is ambiguous: " + strings.Join(names, ", ")
 }
 
 // The argument-taking commands. These are the ones with no keystroke behind

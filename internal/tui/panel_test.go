@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"github.com/lucasassuncao/bezel/draw"
+	"github.com/lucasassuncao/bezel/layout"
 	"io"
 	"strings"
 	"testing"
@@ -87,8 +89,10 @@ func longestRun(s string, r rune) int {
 // byte for byte identical. The border characters carry it, and this pins that.
 func TestFocusSurvivesAMonochromeTerminal(t *testing.T) {
 	h := newHarness(t)
-	focused := monochrome(h.m.titledPanel("Secrets", 30, 5, true, "content"))
-	idle := monochrome(h.m.titledPanel("Secrets", 30, 5, false, "content"))
+	th := h.m.st.Shell()
+	box := layout.Rect{W: 30, H: 5}
+	focused := monochrome(draw.Panel(box, "Secrets", "content", th.PanelFocused))
+	idle := monochrome(draw.Panel(box, "Secrets", "content", th.Panel))
 
 	if focused == idle {
 		t.Errorf("the focused panel is indistinguishable without colour:\n%s", focused)

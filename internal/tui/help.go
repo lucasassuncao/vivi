@@ -1,8 +1,9 @@
 package tui
 
 import (
-	"fmt"
-	"strings"
+	"github.com/lucasassuncao/bezel/layout"
+	"github.com/lucasassuncao/bezel/legend"
+	"github.com/lucasassuncao/bezel/overlay"
 
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
@@ -13,26 +14,15 @@ import (
 
 // openHelp puts the panel up. It closes on esc, q, ? or i, which handleKey
 // answers for every modal that has nothing else to do.
-func (m *Model) openHelp() { m.mode = showingHelp{} }
+func (m *Model) openHelp() {
+	m.closeOverlays()
+	m.sh = m.sh.Push(helpOverlay{m})
+}
 
 // ui.HelpSection is one titled block of the "?" panel.
 
-// commandSection is the colon commands available now, generated from the table
-// so a new one cannot be added without appearing here. Only the keyless ones:
-// the rest are keystrokes the section above already names.
-func (m *Model) commandSection() ui.HelpSection {
-	rows := make([][2]string, 0, 6)
-	for _, c := range m.available() {
-		if c.key == "" {
-			rows = append(rows, [2]string{c.label(), c.title})
-		}
-	}
-	rows = append(rows, [2]string{":", "every command, with its key"})
-
-	return ui.HelpSection{Title: "Commands", Rows: rows}
-}
-
-// renderHelp is the full key list for where the user actually is, contextual
+// renderHelp is the full key list for where the user actually is, drawn by
+// bezel's Help so every app's "?" panel looks alike. Contextual
 // for the reason the legend truncates: a list spanning every tab is one nobody
 // finishes. It ends with the meta keys, which act on the app and not the node.
 func (m *Model) renderHelp(bodyHeight int) string {
@@ -41,6 +31,7 @@ func (m *Model) renderHelp(bodyHeight int) string {
 		{"i", "token information"},
 		{"R", "reload what this tab shows"},
 		{"home / end", "top / bottom"},
+		{":", "every command, with its key"},
 		{"?", "this panel   ·   q quit"},
 	}}
 
@@ -55,22 +46,17 @@ func (m *Model) renderHelp(bodyHeight int) string {
 			{"", "reading, copying and the version list all still work"},
 		}}}, sections...)
 	}
-	sections = append(sections, meta, m.commandSection())
+	sections = append(sections, meta)
 
-	var b strings.Builder
+	out := make([]overlay.HelpSection, len(sections))
 	for i, s := range sections {
-		if i > 0 {
-			b.WriteString("\n")
+		entries := make([]legend.Entry, len(s.Rows))
+		for j, r := range s.Rows {
+			entries[j] = legend.New(r[0], r[1])
 		}
-		b.WriteString(m.st.ModalTitle.Render(s.Title))
-		b.WriteString("\n\n")
-		for _, r := range s.Rows {
-			fmt.Fprintf(&b, "  %-16s %s\n", r[0], r[1])
-		}
+		out[i] = overlay.HelpSection{Name: s.Title, Entries: entries}
 	}
-	b.WriteString("\n")
-	b.WriteString(m.st.Dim.Render("esc closes"))
-	return m.st.ModalBox(strings.Split(b.String(), "\n"), bodyHeight, m.width)
+	return overlay.NewHelp("", out, m.st.Modal, m.st.Shell().Legend).View(layout.Rect{W: m.width, H: bodyHeight})
 }
 
 // contextHelp is the section for where the user is, which every tab answers for

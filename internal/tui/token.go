@@ -2,10 +2,10 @@ package tui
 
 import (
 	"fmt"
+	"github.com/lucasassuncao/bezel/draw"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
 
 // The token panel, which opens over any tab. The one modal with an action of
@@ -15,7 +15,8 @@ import (
 // openToken shows the panel and refreshes what it reports, because a TTL read
 // at startup is the one number in it guaranteed to be wrong by now.
 func (m *Model) openToken() tea.Cmd {
-	m.mode = showingToken{}
+	m.closeOverlays()
+	m.sh = m.sh.Push(tokenOverlay{m})
 	return m.reloadToken()
 }
 
@@ -34,12 +35,12 @@ func (m *Model) renderToken(bodyHeight int) string {
 	// The name, the ids and the policy names below are all chosen by whoever
 	// configured the auth method, so none of them is drawn as it arrived.
 	rows := [][2]string{
-		{"server", ui.Sanitize(m.server.Address)},
-		{"namespace", ui.OrDash(ui.Sanitize(m.server.Namespace))},
-		{"display name", ui.OrDash(ui.Sanitize(m.token.DisplayName))},
-		{"accessor", ui.OrDash(ui.Sanitize(m.token.Accessor))},
-		{"entity", ui.OrDash(ui.Sanitize(m.token.EntityID))},
-		{"ttl", ui.ShortDuration(m.token.TTL)},
+		{"server", draw.Sanitize(m.server.Address)},
+		{"namespace", draw.OrDash(draw.Sanitize(m.server.Namespace))},
+		{"display name", draw.OrDash(draw.Sanitize(m.token.DisplayName))},
+		{"accessor", draw.OrDash(draw.Sanitize(m.token.Accessor))},
+		{"entity", draw.OrDash(draw.Sanitize(m.token.EntityID))},
+		{"ttl", draw.ShortDuration(m.token.TTL)},
 		{"renewable", fmt.Sprint(m.token.Renewable)},
 	}
 	for _, r := range rows {
@@ -52,7 +53,7 @@ func (m *Model) renderToken(bodyHeight int) string {
 	}
 	for _, p := range m.token.Policies {
 		b.WriteString("    ")
-		b.WriteString(ui.Sanitize(p))
+		b.WriteString(draw.Sanitize(p))
 		b.WriteString("\n")
 	}
 

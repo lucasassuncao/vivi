@@ -3,12 +3,10 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"slices"
-	"strings"
+
+	"github.com/lucasassuncao/bezel/theme"
 
 	"github.com/lucasassuncao/vivi/internal/app"
-	"github.com/lucasassuncao/vivi/internal/tui"
-	"github.com/lucasassuncao/yedit/theme"
 )
 
 // ThemeEnvVar names the theme when no flag is given. vivi has no configuration
@@ -16,51 +14,18 @@ import (
 // the same way the connection itself is configured.
 const ThemeEnvVar = "VIVI_THEME"
 
-// resolveTheme turns a theme name into a palette. An empty name is the built-in
-// adaptive one, the only palette that reads correctly on both light and dark
+// resolveTheme turns a theme name into a theme. An empty name is bezel's
+// adaptive default, the only palette that reads correctly on both light and dark
 // terminals: a named theme is fixed colours, and therefore a deliberate choice.
-func resolveTheme(name string) (tui.Colors, error) {
+func resolveTheme(name string) (theme.Theme, error) {
 	if name == "" {
 		name = os.Getenv(ThemeEnvVar)
 	}
-	if name == "" {
-		return tui.Colors{}, nil
+	selected, err := theme.Lookup(name)
+	if err != nil {
+		return theme.Theme{}, fmt.Errorf("%w; run \"vivi --list-themes\" to see the %d available", err, len(theme.All()))
 	}
-
-	selected, ok := theme.All()[strings.ToLower(name)]
-	if !ok {
-		return tui.Colors{}, fmt.Errorf("unknown theme %q; run \"vivi --list-themes\" to see the %d available",
-			name, len(theme.All()))
-	}
-
-	return paletteOf(selected), nil
-}
-
-// paletteOf maps a yedit theme onto vivi's roles. yedit has no warning colour
-// and vivi needs one - soft-deleted and destroyed must not look alike - so that
-// role is left empty here for the built-in palette to fill.
-func paletteOf(t theme.Theme) tui.Colors {
-	c := theme.ResolveColors(t)
-	return tui.Colors{
-		Accent:    c.ActiveBorderColor,
-		Selection: c.SelectionColor,
-		Border:    c.InactiveBorderColor,
-		Dim:       c.AvailableItemColor,
-		Success:   c.ExistingItemColor,
-		Danger:    c.ErrorColor,
-	}
-}
-
-// themeNames lists what --theme accepts, grouped the way the registry groups
-// them so the list reads as categories rather than as fifty-six words.
-func themeNames() string {
-	var b strings.Builder
-	for _, category := range theme.Categories() {
-		names := append([]string(nil), category.Themes...)
-		slices.Sort(names)
-		fmt.Fprintf(&b, "  %-14s %s\n", category.Name, strings.Join(names, ", "))
-	}
-	return b.String()
+	return selected, nil
 }
 
 // ReadOnlyEnvVar names the read-only policy when no flag is given, since vivi

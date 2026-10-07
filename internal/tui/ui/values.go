@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/lucasassuncao/bezel/draw"
 
 	"github.com/lucasassuncao/vivi/internal/vault"
 )
@@ -55,6 +56,6 @@ func Humanize(err error) string {
 		// The only branch carrying text vivi did not write: the server phrased
 		// this one, so it is drawn under the same rules as any other content
 		// from the server.
-		return Sanitize(err.Error())
+		return draw.Sanitize(err.Error())
 	}
 }

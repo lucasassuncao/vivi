@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/lucasassuncao/vivi/internal/tui/ui"
 	"strings"
 	"testing"
 
@@ -25,7 +26,7 @@ func readOnlyHarness(t *testing.T, policy app.ReadOnlyPolicy) *harness {
 	}
 	m := New(Options{Client: srv, Token: token, Access: app.ReadOnly, ReadOnly: policy})
 	clip := &fakeClipboard{}
-	m.clip = clip.write
+	m.sh = m.sh.WithClipboard(clip.write)
 	h := &harness{t: t, m: m, server: srv, clip: clip}
 
 	h.m.Update(tea.WindowSizeMsg{Width: 120, Height: 44})
@@ -82,8 +83,8 @@ func TestTheLegendDropsWritesButTheHelpExplainsThem(t *testing.T) {
 	h.open("kv/app/prod/db")
 
 	for _, e := range h.m.legend() {
-		if e.Writes {
-			t.Errorf("the legend still offers %q in a read-only session", e.Key)
+		if e.Needs == ui.CapWrite {
+			t.Errorf("the legend still offers %q in a read-only session", e.Help().Key)
 		}
 	}
 
@@ -112,17 +113,17 @@ func TestTheRefusalBannerExpires(t *testing.T) {
 	// press settles the refusal, which arrives as a message from the tab and is
 	// what arms the timer.
 	h.press("d")
-	if h.m.banner == "" {
+	if h.m.banner() == "" {
 		t.Fatal("a refused delete said nothing at all")
 	}
 
 	// The harness drops timer messages rather than chase them. This is the one
 	// test about the timer, so it delivers them itself.
-	for _, msg := range deliver(expireBanner(h.m.bannerID)) {
+	for _, msg := range deliver(func() tea.Msg { return h.m.sh.StatusExpiry() }) {
 		h.m.Update(msg)
 	}
-	if h.m.banner != "" {
-		t.Fatalf("the refusal never expired: %q", h.m.banner)
+	if h.m.banner() != "" {
+		t.Fatalf("the refusal never expired: %q", h.m.banner())
 	}
 }
 

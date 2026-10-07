@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel/legend"
 	"github.com/lucasassuncao/vivi/internal/tui/activity"
 	"github.com/lucasassuncao/vivi/internal/tui/auth"
 	"github.com/lucasassuncao/vivi/internal/tui/policies"
@@ -36,7 +37,7 @@ type Tab interface {
 
 	// Legend answers the footer's two questions at once: what the list holds,
 	// and what the keyboard can do here.
-	Legend(ctx ui.Context) (status string, keys []ui.LegendEntry)
+	Legend(ctx ui.Context) (status string, keys []legend.Entry)
 	Help(ctx ui.Context) ui.HelpSection
 	CopyRows(ctx ui.Context) []ui.CopyRow
 
@@ -48,6 +49,10 @@ type Tab interface {
 	// Captures reports that a modal or an input in the tab is taking every
 	// keystroke, so the shell's own shortcuts stand aside.
 	Captures() bool
+
+	// ScreenCaptures is Captures for the screen under any modal. The legend
+	// follows the screen, so "?" stays on it while a modal is up.
+	ScreenCaptures() bool
 
 	// Blur is the tab leaving the front, its transient state with it.
 	Blur()

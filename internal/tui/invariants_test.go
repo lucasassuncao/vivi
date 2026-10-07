@@ -58,7 +58,7 @@ func TestViewDoesNotWriteToTheModel(t *testing.T) {
 // form that can be compared. The Model itself cannot be: it carries lipgloss
 // styles, which hold maps.
 type modelState struct {
-	mode                       mode
+	mode                       string
 	tab                        tab
 	focus                      ui.Focus
 	width, height              int
@@ -70,15 +70,13 @@ type modelState struct {
 	activityCursor, activities int
 	pending                    int
 	banner                     string
-	bannerErr                  bool
-	bannerID                   int
 	pendingPolicy              string
 	detailY, detailW, detailH  int
 }
 
 func snapshot(m *Model) modelState {
 	return modelState{
-		mode: m.mode, tab: m.tab, focus: m.focus,
+		mode: m.modeName(), tab: m.tab, focus: m.focus,
 		width: m.width, height: m.height,
 		// Every tab reports itself. The Secrets one has enough state to need a
 		// struct of its own, and it is comparable for the same reason this is.
@@ -88,31 +86,10 @@ func snapshot(m *Model) modelState {
 		methodCursor: m.authTab.MethodCursor(), roleCursor: m.authTab.RoleCursor(),
 		onRoles:        m.authTab.OnRoles(),
 		activityCursor: m.activityTab.Cursor(), activities: len(m.activityTab.Entries()),
-		pending: m.pending,
-		banner:  m.banner, bannerErr: m.bannerErr, bannerID: m.bannerID,
+		pending:       m.pending,
+		banner:        m.banner(),
 		pendingPolicy: m.policiesTab.Pending(),
 		detailY:       m.detail.YOffset(), detailW: m.detail.Width(), detailH: m.detail.Height(),
-	}
-}
-
-// The nil mode is the specific case this used to fail on: reading it repaired
-// it, so the first frame after a bad transition wrote to the model.
-func TestRenderingAMissingModeDoesNotRepairIt(t *testing.T) {
-	h := newHarness(t)
-	h.m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
-	h.open("kv/app/prod/db")
-
-	h.m.mode = nil
-	h.m.View()
-
-	if h.m.mode != nil {
-		t.Error("the view repaired the mode, so it wrote to the model")
-	}
-	// Update is where the repair belongs, and it has to happen before the
-	// handler that would otherwise dereference it.
-	h.m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
-	if h.m.mode == nil {
-		t.Error("update did not restore the mode")
 	}
 }
 

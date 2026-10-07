@@ -3,6 +3,8 @@ package secrets
 import (
 	"context"
 	"fmt"
+	"github.com/lucasassuncao/bezel/draw"
+	"github.com/lucasassuncao/bezel/legend"
 	"slices"
 	"strings"
 
@@ -164,7 +166,7 @@ func (m *Model) renderDiff(d *diffResult, bodyHeight int) string {
 		if m.diffRevealed[row.key] {
 			anyRevealed = true
 		}
-		key := ui.Sanitize(row.key)
+		key := draw.Sanitize(row.key)
 		was, now := m.diffSide(row.key, row.aValue), m.diffSide(row.key, row.bValue)
 
 		var rest string
@@ -187,12 +189,12 @@ func (m *Model) renderDiff(d *diffResult, bodyHeight int) string {
 	// same way the detail pane's per-row hint does: offering to reveal what is
 	// already on screen reads as a second, unrelated action. Drawn as bracketed
 	// pairs because that is what a key looks like everywhere else in the app.
-	reveal, closes := ui.Entry("r", "reveal fields"), ui.Entry("esc", "closes")
+	reveal, closes := legend.New("r", "reveal fields"), legend.New("esc", "closes")
 	if anyRevealed {
-		reveal, closes = ui.Entry("r", "hide fields"), ui.Entry("esc", "closes and re-masks")
+		reveal, closes = legend.New("r", "hide fields"), legend.New("esc", "closes and re-masks")
 	}
 	b.WriteString("\n")
-	b.WriteString(m.st.HintLine([]ui.LegendEntry{ui.Entry("↑/↓", "move"), reveal, closes}))
+	b.WriteString(m.st.HintLine([]legend.Entry{legend.New("↑/↓", "move"), reveal, closes}))
 	return m.st.ModalBox(strings.Split(b.String(), "\n"), bodyHeight, m.width)
 }
 
@@ -206,7 +208,7 @@ func (m *Model) diffSide(key, value string) string {
 	if value == "" {
 		return m.st.Dim.Render("(empty)")
 	}
-	return ui.Sanitize(value)
+	return draw.Sanitize(value)
 }
 
 // keyDiff routes keys while the diff modal is open. It used to answer four,

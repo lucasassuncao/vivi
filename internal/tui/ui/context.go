@@ -48,16 +48,6 @@ type Context struct {
 	ReadOnly app.ReadOnlyPolicy
 }
 
-// LegendEntry is one key and what it does, for the footer under the panes.
-type LegendEntry struct {
-	Key, Action string
-
-	// Writes marks an entry a read-only session refuses, so legend can drop it.
-	// It rides on the entry because a lookup table keyed on key strings drifted:
-	// it advertised four refused keys and dropped "d diff", which works.
-	Writes bool
-}
-
 // HelpSection is one titled block of the "?" panel.
 type HelpSection struct {
 	Title string

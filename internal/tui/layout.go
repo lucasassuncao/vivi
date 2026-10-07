@@ -1,41 +1,15 @@
 package tui
 
 import (
-	"strings"
-
-	"charm.land/lipgloss/v2"
+	"github.com/lucasassuncao/bezel/draw"
+	"github.com/lucasassuncao/bezel/layout"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
 
 // How the terminal is divided, and nothing about what goes in the divisions.
-// Every number is decided without rendering: the modal builders need the body
-// height before there is a body, and View may not write to the model.
-
-// The chrome is a known number of rows, which is what lets the body be sized
-// without rendering first: every line is truncated and never wrapped.
-// TestChromeIsTheHeightTheLayoutAssumes pins all four.
-const (
-	headerHeight = 4
-	tabsHeight   = 1
-	// One blank row above the tab strip and one below it. The strip reads as a
-	// thing of its own rather than as the header's last line or the pane's first.
-	headerGap = 1
-	tabGap    = 1
-)
-
-// footerRows is the status line plus however many rows the legend takes. Still
-// decided without rendering, since legendLines is pure - but no longer a
-// function of the terminal size alone: a legend wraps in one tab and not another.
-func (m *Model) footerRows() int {
-	return 1 + len(m.legendLines(m.width))
-}
-
-// bodyHeight is how many rows the panels get. It is a pure function of the
-// terminal size: View may not write to the model, and the modal builders need
-// the same number without having rendered anything.
-func (m *Model) bodyHeight() int {
-	return max(1, m.height-headerHeight-headerGap-tabsHeight-tabGap-m.footerRows())
-}
+// The shell resolves the tree; what is decided here is the tree's shape for
+// this frame: which pane survives a narrow terminal, and whether the right
+// column has room for the reference panel under the detail.
 
 // Left pane sizing. The floor keeps paths readable; the ceiling stops an
 // ultrawide terminal from handing half the screen to a column of short names
@@ -49,14 +23,13 @@ const (
 // narrowLimit is where two panes stop being readable and the detail collapses.
 // At 44 the split was legal and useless: kv pads a label to fourteen, so every
 // value was truncated to nothing. 72 leaves the detail 42 columns.
-const narrowLimit = 72
+const narrowLimit = ui.NarrowLimit
 
 // Right column sizing. The column holds the detail panel and, under it, the
 // copy panel.
 const (
 	// minPanelOuter is the smallest a panel can be and still be one: a title
-	// edge, a row of content, a bottom edge. titledPanel floors at the same
-	// number, so less is not smaller but taller than asked, pushing the layout.
+	// edge, a row of content, a bottom edge.
 	minPanelOuter = 3
 
 	// copyPanelPart is the share of the right column the copy panel takes: a
@@ -79,6 +52,13 @@ const (
 	copyPanelCols = 57
 )
 
+// Leaf names, shared by the layout, the panes and the focus.
+const (
+	paneList   = "list"
+	paneDetail = "detail"
+	paneCopy   = "copy"
+)
+
 // splitHeights divides the right column between the detail and the copy panel.
 // The copy panel takes a fixed share, not its own content height: sized to its
 // rows, the detail above resized on every cursor move. rows == 0 gives it none.
@@ -97,118 +77,72 @@ func splitHeights(total, rows int) (detail, copyPanel int) {
 	return total - copyPanel, copyPanel
 }
 
-// rightColumn is how the right column is divided, which the renderer and
-// syncDetail both have to agree on: one sizes the viewport and the other draws
-// it, and a disagreement is a pane that scrolls by the wrong amount.
-func (m *Model) rightColumn(bodyHeight int) (width, detailHeight, copyHeight int) {
-	_, width = splitWidths(m.width)
+// leftColumn is the list pane's constraints.
+func leftColumn() layout.Leaf {
+	return layout.Fixed(paneList, layout.Ratio(1, leftWidthPart), layout.Min(minLeftWidth), layout.Max(maxLeftWidth))
+}
 
-	// Narrow enough and nothing the panel says survives the trip to the screen,
-	// so it is given up whole rather than drawn as truncated commands. Width
-	// before rows: zero rows and rows that do not fit are one answer here.
-	rows := 0
-	if ui.PanelContentWidth(width) >= copyPanelCols {
-		rows = len(m.copyLines(ui.PanelContentWidth(width)))
+// layout is this frame's tree. Below narrowLimit only the focused pane is
+// drawn: stepping into a secret replaces the list and esc puts it back.
+func (m *Model) layout() layout.Node {
+	keep := paneList
+	if m.focus == ui.FocusDetail {
+		keep = paneDetail
 	}
-
-	detailHeight, copyHeight = splitHeights(bodyHeight, rows)
-	return width, detailHeight, copyHeight
+	right := layout.Node(layout.Fill(paneDetail))
+	if h := m.copyPanelHeight(); h > 0 {
+		right = layout.Rows(layout.Fill(paneDetail), layout.Fixed(paneCopy, layout.Lines(h)).Info())
+	}
+	return layout.Columns(leftColumn(), right).Collapse(narrowLimit, keep)
 }
 
-// splitWidths divides the terminal between the two panes.
-func splitWidths(total int) (left, right int) {
-	left = min(max(total/leftWidthPart, minLeftWidth), maxLeftWidth)
-	return left, total - left
-}
-
-// detailGeometry is the size of the detail viewport in either layout: the top
-// of the right column, or the whole body below narrowLimit. renderPanes draws
-// it and syncDetail fills it, so both have to take the number from here.
-func (m *Model) detailGeometry(bodyHeight int) (width, height int) {
+// copyPanelHeight is the outer height the reference panel gets, or zero when
+// it has nothing to say or the column is too narrow for what it says: then
+// it is given up whole rather than drawn as truncated commands.
+func (m *Model) copyPanelHeight() int {
 	if m.width < narrowLimit {
-		return ui.PanelContentWidth(m.width), ui.PanelContentHeight(bodyHeight)
+		return 0
 	}
-
-	rightWidth, detailHeight, _ := m.rightColumn(bodyHeight)
-	return ui.PanelContentWidth(rightWidth), ui.PanelContentHeight(detailHeight)
-}
-
-func (m *Model) renderPanes(height int) string {
-	// One pane below narrowLimit, and the focus says which: stepping into a
-	// secret replaces the list and esc puts it back. Drawing the list
-	// unconditionally left a narrow split unable to show a secret at all.
-	if m.width < narrowLimit {
-		if m.focus == ui.FocusDetail {
-			return m.titledPanel(m.rightTitle(), m.width, height, true, m.detail.View())
-		}
-		left := m.renderList(ui.PanelContentWidth(m.width), ui.PanelContentHeight(height))
-		return m.titledPanel(m.leftTitle(), m.width, height, true, left)
+	width := draw.InnerRect(m.sh.Rect(paneDetail)).W
+	if width < copyPanelCols {
+		return 0
 	}
+	_, h := splitHeights(m.sh.Body().H, len(m.copyLines(width)))
+	return h
+}
 
-	leftWidth, _ := splitWidths(m.width)
-	rightWidth, detailHeight, copyHeight := m.rightColumn(height)
-
-	left := m.renderList(ui.PanelContentWidth(leftWidth), ui.PanelContentHeight(height))
-
-	// Height on a lipgloss style is a floor, not a ceiling: taller content
-	// pushes the border down the screen. The left is clipped by the panel, the
-	// right goes through a viewport so the overflow stays reachable.
-	leftPane := m.titledPanel(m.leftTitle(), leftWidth, height, m.focus == ui.FocusList, left)
-	rightPane := m.titledPanel(m.rightTitle(), rightWidth, detailHeight, m.focus == ui.FocusDetail, m.detail.View())
-
-	// The copy panel never takes focus: it holds no cursor and nothing to
-	// scroll, so an idle border is the honest way to draw it.
-	if copyHeight > 0 {
-		copyPane := m.titledPanel(copyPanelTitle, rightWidth, copyHeight, false,
-			strings.Join(m.copyLines(ui.PanelContentWidth(rightWidth)), "\n"))
-		rightPane = lipgloss.JoinVertical(lipgloss.Left, rightPane, copyPane)
+// relayout hands the shell this frame's tree and focus. Called after every
+// Update so what View draws and what syncDetail sized agree.
+func (m *Model) relayout() {
+	focus := paneList
+	if m.focus == ui.FocusDetail {
+		focus = paneDetail
 	}
-
-	return lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
+	m.sh = m.sh.SetLayout(m.layout()).SetFocus(focus)
 }
 
-// leftTitle names what the list is showing.
-func (m *Model) leftTitle() string {
-	left, _ := m.currentTab().Titles()
-	return left
-}
-
-// rightTitle names what the detail pane is showing, which doubles as the
-// breadcrumb for a tree scrolled deep enough to lose its context.
-func (m *Model) rightTitle() string {
-	_, right := m.currentTab().Titles()
-	return right
-}
-
-// clipHeight drops whatever does not fit, so a pane can never grow its border
-// past the bottom of the screen.
-func clipHeight(content string, height int) string {
-	// A negative height is a slice bound, not a small screen: lines[:-1] does
-	// not clip, it panics. Every caller floors its height today, which is
-	// exactly the kind of guarantee that holds until one of them stops.
-	if height <= 0 {
+// helpKey is what the legend pins as help: "?" on a screen that browses,
+// nothing where the screen takes keystrokes as text. A modal or panel over the
+// screen never changes it: the legend is the screen's.
+func (m *Model) helpKey() string {
+	if m.currentTab().ScreenCaptures() {
 		return ""
 	}
-	lines := strings.Split(content, "\n")
-	if len(lines) <= height {
-		return content
+	return "?"
+}
+
+// bodyHeight is how many rows the panels get.
+func (m *Model) bodyHeight() int { return m.sh.Body().H }
+
+// detailGeometry is the size of the detail viewport in either layout: the top
+// of the right column, or the whole body below narrowLimit.
+func (m *Model) detailGeometry() (width, height int) {
+	rect := m.sh.Rect(paneDetail)
+	if rect == (layout.Rect{}) {
+		// Not placed: the list has the narrow screen. Size the detail as the
+		// whole body so stepping into it lands on a sized viewport.
+		rect = m.sh.Body()
 	}
-	return strings.Join(lines[:height], "\n")
-}
-
-// renderList is the left pane of the active tab, filled while rendering.
-func (m *Model) renderList(width, height int) string {
-	return m.currentTab().RenderList(width, height, m.uiContext())
-}
-
-// renderDetail is the right pane of the active tab, filled from syncDetail.
-func (m *Model) renderDetail(width int) string {
-	return m.currentTab().RenderDetail(width, m.uiContext())
-}
-
-// float centres content over the panes, which are drawn and then written over
-// so what the modal asks about stays on screen. Clipped to the body first, or a
-// tall box loses its bottom rows outside the background and ends mid-border.
-func (m *Model) float(content string, height int) string {
-	return ui.CompositeCenter(clipHeight(content, height), ui.PadHeight(m.renderPanes(height), height))
+	r := draw.InnerRect(rect)
+	return r.W, r.H
 }

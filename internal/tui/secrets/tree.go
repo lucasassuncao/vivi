@@ -1,10 +1,12 @@
 package secrets
 
 import (
+	"github.com/lucasassuncao/bezel/draw"
+	"github.com/lucasassuncao/bezel/layout"
+	"github.com/lucasassuncao/bezel/tree"
 	"strings"
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
-	"github.com/lucasassuncao/vivi/internal/tui/ui"
 	"github.com/lucasassuncao/vivi/internal/vault"
 )
 
@@ -100,28 +102,43 @@ const (
 )
 
 // row is one line of the tree pane. One row is one rendered line: the cursor
-// and scrollStart both index this slice, so a header smuggling in its own
-// newline would put them out of step with the screen.
+// indexes the visible rows, so a header smuggling in its own newline would
+// put it out of step with the screen.
 type row struct {
 	kind   rowKind
 	node   *node  // set on rowNode only
 	header string // set on rowHeader only
 }
 
-// tree is the mount forest plus the cursor and the filter over it.
-type tree struct {
-	roots  []*node
-	cursor int
+// TreeInfo is what the bezel tree reads: headers and spacers are skipped by
+// the cursor, a secret never expands, a directory is open when its node is.
+func (r row) TreeInfo() tree.Info {
+	if r.kind != rowNode {
+		return tree.Info{Section: true}
+	}
+	return tree.Info{Depth: r.node.depth(), Leaf: r.node.kind == kindSecret, Expanded: r.node.expanded}
+}
+
+// Expand writes through to the node: expansion is the node's, since a load
+// is what fills it.
+func (r row) Expand(open bool) row {
+	if r.node != nil {
+		r.node.expanded = open
+	}
+	return r
+}
+
+// forest is the mount forest plus the cursor and the filter over it. Nodes
+// holds every loaded row that matches the filter, headers included; the bezel
+// tree hides what sits under a closed directory and keeps the cursor on a node.
+type forest struct {
+	tree.Model[row]
+	roots []*node
 
 	// filter is the fuzzy pattern typed with "/". It matches against what has
 	// already been loaded: the tree never walks the server to satisfy a
 	// filter, so filtering stays instant and free.
 	filter string
-
-	// visible is the flattened rows, recomputed whenever structure or filter
-	// changes. It holds the section headers as well as the nodes, because the
-	// cursor and the scroll both count lines on the screen.
-	visible []row
 
 	// grouped reports whether reflow emitted section headers. It is false when
 	// only one section has anything in it, and the view reads it to decide
@@ -130,7 +147,7 @@ type tree struct {
 }
 
 // setMounts replaces the forest, keeping only KV mounts browsable.
-func (t *tree) setMounts(mounts []vault.Mount) {
+func (t *forest) setMounts(mounts []vault.Mount) {
 	t.roots = t.roots[:0]
 	for _, m := range mounts {
 		name := strings.Trim(m.Path, "/")
@@ -143,12 +160,12 @@ func (t *tree) setMounts(mounts []vault.Mount) {
 			desc:      m.Description,
 		})
 	}
-	t.cursor = 0
+	t.Cursor = 0
 	t.reflow()
 }
 
 // setChildren installs a loaded listing under a node.
-func (t *tree) setChildren(n *node, entries []vault.Entry) {
+func (t *forest) setChildren(n *node, entries []vault.Entry) {
 	n.children = n.children[:0]
 	for _, e := range entries {
 		kind := kindSecret
@@ -184,7 +201,7 @@ func joinRel(base, name string) string {
 }
 
 // markDenied records that the token may not list this node.
-func (t *tree) markDenied(n *node) {
+func (t *forest) markDenied(n *node) {
 	n.denied = true
 	n.loading = false
 	n.loaded = true
@@ -212,8 +229,8 @@ func mountGroup(n *node) int {
 // reflow rebuilds the visible rows from the expansion state and the filter,
 // under one header per non-empty section. A lone section gets no header: it
 // separates nothing from nothing.
-func (t *tree) reflow() {
-	t.visible = t.visible[:0]
+func (t *forest) reflow() {
+	t.Nodes = t.Nodes[:0]
 
 	groups := make([][]row, len(groupLabels))
 	filled := 0
@@ -235,24 +252,23 @@ func (t *tree) reflow() {
 			continue
 		}
 		if t.grouped {
-			if len(t.visible) > 0 {
-				t.visible = append(t.visible, row{kind: rowSpacer})
+			if len(t.Nodes) > 0 {
+				t.Nodes = append(t.Nodes, row{kind: rowSpacer})
 			}
-			t.visible = append(t.visible, row{kind: rowHeader, header: groupLabels[g]})
+			t.Nodes = append(t.Nodes, row{kind: rowHeader, header: groupLabels[g]})
 		}
-		t.visible = append(t.visible, rows...)
+		t.Nodes = append(t.Nodes, rows...)
 	}
 
-	t.cursor = t.snap(clampIndex(t.cursor, max(0, len(t.visible)-1)), 1)
+	// The cursor stays where it was, or on the nearest node past a heading.
+	t.Model = t.ClampCursor().MoveTo(t.Cursor)
 }
 
-// appendRows flattens a node and its expanded descendants onto out.
-func (t *tree) appendRows(out []row, n *node) []row {
+// appendRows flattens a node and its loaded descendants onto out. The bezel
+// tree hides the ones under a closed directory.
+func (t *forest) appendRows(out []row, n *node) []row {
 	if t.matches(n) {
 		out = append(out, row{kind: rowNode, node: n})
-	}
-	if !n.expanded {
-		return out
 	}
 	for _, c := range n.children {
 		out = t.appendRows(out, c)
@@ -260,31 +276,10 @@ func (t *tree) appendRows(out []row, n *node) []row {
 	return out
 }
 
-// snap returns the nearest row holding a node, starting at i and walking in dir,
-// falling back to the other direction when that runs off the end.
-func (t *tree) snap(i, dir int) int {
-	if len(t.visible) == 0 {
-		return 0
-	}
-	i = clampIndex(i, len(t.visible)-1)
-
-	for j := i; j >= 0 && j < len(t.visible); j += dir {
-		if t.visible[j].kind == rowNode {
-			return j
-		}
-	}
-	for j := i; j >= 0 && j < len(t.visible); j -= dir {
-		if t.visible[j].kind == rowNode {
-			return j
-		}
-	}
-	return 0
-}
-
 // matches decides whether a node survives the filter: kept when it matches, and
 // when a loaded descendant does. Otherwise filtering hides the path leading to
 // the hit and the result is unreachable.
-func (t *tree) matches(n *node) bool {
+func (t *forest) matches(n *node) bool {
 	if t.filter == "" {
 		return true
 	}
@@ -300,61 +295,29 @@ func (t *tree) matches(n *node) bool {
 }
 
 // current returns the selected node, or nil when the tree is empty.
-func (t *tree) current() *node {
-	if t.cursor < 0 || t.cursor >= len(t.visible) {
+func (t *forest) current() *node {
+	idx := t.CurrentIdx()
+	if idx < 0 {
 		return nil
 	}
-	return t.visible[t.cursor].node
+	return t.Nodes[idx].node
 }
 
-// move walks delta nodes, stepping over the rows that are not nodes and stopping
-// on the last node rather than running into a trailing header.
-func (t *tree) move(delta int) {
-	if len(t.visible) == 0 {
-		return
-	}
-	step := 1
-	if delta < 0 {
-		step, delta = -1, -delta
-	}
-
-	pos := t.cursor
-	for ; delta > 0; delta-- {
-		next := pos + step
-		for next >= 0 && next < len(t.visible) && t.visible[next].kind != rowNode {
-			next += step
-		}
-		if next < 0 || next >= len(t.visible) {
-			break
-		}
-		pos = next
-	}
-	t.cursor = pos
-}
+// move walks delta nodes, stepping over the rows that are not nodes.
+func (t *forest) move(delta int) { t.Model = t.Move(delta) }
 
 // moveTo jumps to a line, snapping backwards to a node. Backwards is what makes
-// "end" work: keySecrets asks for the last line, and the last line of a grouped
-// tree is a node only by coincidence.
-func (t *tree) moveTo(i int) {
-	if len(t.visible) == 0 {
-		return
-	}
-	t.cursor = t.snap(clampIndex(i, len(t.visible)-1), -1)
-}
+// "end" work: the last line of a grouped tree is a node only by coincidence.
+func (t *forest) moveTo(i int) { t.Model = t.MoveTo(i) }
 
 // selectNode puts the cursor on a node if it is currently visible.
-func (t *tree) selectNode(target *node) {
-	for i, r := range t.visible {
-		if r.kind == rowNode && r.node == target {
-			t.cursor = i
-			return
-		}
-	}
+func (t *forest) selectNode(target *node) {
+	t.Model, _ = t.CursorTo(func(r row) bool { return r.node == target })
 }
 
 // collapse closes the current node, or moves to its parent when it is already
 // closed. Going up on a closed node is what makes "h" feel like "back".
-func (t *tree) collapse() {
+func (t *forest) collapse() {
 	n := t.current()
 	if n == nil {
 		return
@@ -371,7 +334,7 @@ func (t *tree) collapse() {
 }
 
 // invalidate drops a node's loaded children so the next expansion refetches.
-func (t *tree) invalidate(n *node) {
+func (t *forest) invalidate(n *node) {
 	n.children = nil
 	n.loaded = false
 	n.denied = false
@@ -379,13 +342,10 @@ func (t *tree) invalidate(n *node) {
 	t.reflow()
 }
 
-// clampIndex keeps a cursor inside [0, hi].
-func clampIndex(v, hi int) int { return min(max(v, 0), hi) }
-
 // find walks a path as far as the tree goes, stopping rather than failing on an
 // unloaded one. Mounts match by longest name, since a mount path may contain
 // slashes; a trailing slash separates the secret app from the directory app/.
-func (t *tree) find(path string) (*node, string) {
+func (t *forest) find(path string) (*node, string) {
 	wantDir := strings.HasSuffix(path, "/")
 	path = strings.Trim(path, "/")
 
@@ -426,7 +386,7 @@ func (t *tree) find(path string) (*node, string) {
 // revealNode opens everything above a node and puts the cursor on it. A jump
 // that landed on a row folded inside a closed parent would look like nothing
 // had happened.
-func (t *tree) revealNode(n *node) {
+func (t *forest) revealNode(n *node) {
 	for p := n.parent; p != nil; p = p.parent {
 		p.expanded = true
 	}
@@ -445,12 +405,12 @@ func (m *Model) renderTree(width, height int) string {
 	// While filtering, the pattern gets its own line at the top of the pane, so
 	// the mode is visible where the results are rather than only in the footer.
 	if modeIs[filtering](m) || m.tree.filter != "" {
-		b.WriteString(ui.Truncate(m.renderFilterBox(), width))
+		b.WriteString(draw.Cut(m.renderFilterBox(), width))
 		b.WriteString("\n")
 		height--
 	}
 
-	if len(m.tree.visible) == 0 {
+	if len(m.tree.Visible()) == 0 {
 		if m.tree.filter != "" {
 			return b.String() + m.st.EmptyState(width, height,
 				"nothing matches", "esc clears the filter")
@@ -459,15 +419,16 @@ func (m *Model) renderTree(width, height int) string {
 			"no mounts this token can read", "check the token's policies")
 	}
 
-	start := ui.ScrollStart(m.tree.cursor, len(m.tree.visible), height)
-	for i := start; i < len(m.tree.visible) && i < start+height; i++ {
-		switch r := m.tree.visible[i]; r.kind {
+	vis := m.tree.Visible()
+	start := layout.ScrollStart(m.tree.Cursor, len(vis), height)
+	for i := start; i < len(vis) && i < start+height; i++ {
+		switch r := m.tree.Nodes[vis[i]]; r.kind {
 		case rowHeader:
-			b.WriteString(ui.Truncate(m.st.GroupLabel.Render(r.header), width))
+			b.WriteString(draw.Cut(m.st.GroupLabel.Render(r.header), width))
 		case rowSpacer:
 			// The blank line is the row; there is nothing to draw on it.
 		default:
-			b.WriteString(m.renderTreeRow(r.node, i == m.tree.cursor, width, !m.tree.grouped))
+			b.WriteString(m.renderTreeRow(r.node, i == m.tree.Cursor, width, !m.tree.grouped))
 		}
 		b.WriteString("\n")
 	}
@@ -497,7 +458,7 @@ func (m *Model) renderTreeRow(n *node, selected bool, width int, showVersion boo
 		marker = "▸ "
 	}
 
-	name := ui.Sanitize(n.name)
+	name := draw.Sanitize(n.name)
 	if n.kind != kindSecret {
 		name += "/"
 	}
@@ -531,7 +492,7 @@ func (m *Model) renderTreeRow(n *node, selected bool, width int, showVersion boo
 		cursor = m.st.Cursor.Render("● ")
 	}
 
-	return ui.Truncate(cursor+indent+marker+styled, width)
+	return draw.Cut(cursor+indent+marker+styled, width)
 }
 
 // mountSuffix labels a mount with what it is, so a non-KV one explains why it
@@ -576,3 +537,6 @@ func redundantType(name, mountType string) bool {
 	}
 	return strip(name) == strip(mountType)
 }
+
+// clampIndex keeps a cursor inside [0, hi].
+func clampIndex(v, hi int) int { return min(max(v, 0), hi) }

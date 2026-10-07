@@ -2,6 +2,8 @@ package secrets
 
 import (
 	"context"
+	"github.com/lucasassuncao/bezel/bezeltest"
+	"github.com/lucasassuncao/bezel/theme"
 	"strings"
 	"testing"
 	"time"
@@ -79,7 +81,7 @@ func readOnlyHarness(t *testing.T, policy app.ReadOnlyPolicy) *harness {
 // a terminal wide enough for two panes.
 func newContext() ui.Context {
 	return ui.Context{
-		Styles: ui.NewStyles(ui.Colors{}, true),
+		Styles: ui.NewStyles(theme.Theme{}, true),
 		Focus:  ui.FocusList,
 		Width:  120,
 		Height: 40 - chromeRows,
@@ -149,7 +151,7 @@ func (h *harness) run(cmd tea.Cmd) {
 func (h *harness) press(keys ...string) {
 	h.t.Helper()
 	for _, k := range keys {
-		msg := keyMsg(k)
+		msg := bezeltest.Key(k)
 
 		// A modal in the tab takes every key, exactly as the shell's routing
 		// stands aside for it. Only with the panes in front does the focused
@@ -184,60 +186,19 @@ func (h *harness) paste(s string) {
 	h.run(h.m.Data(tea.PasteMsg{Content: s}))
 }
 
-func keyMsg(s string) tea.KeyPressMsg {
-	switch s {
-	case "enter":
-		return tea.KeyPressMsg{Code: tea.KeyEnter}
-	case "esc":
-		return tea.KeyPressMsg{Code: tea.KeyEscape}
-	case " ", "space":
-		// The text matters as much as the code: a text input inserts what the
-		// message carries, so a space with no text types nothing.
-		return tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
-	case "tab":
-		return tea.KeyPressMsg{Code: tea.KeyTab}
-	case "shift+tab":
-		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
-	case "ctrl+s":
-		return tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}
-	case "up":
-		return tea.KeyPressMsg{Code: tea.KeyUp}
-	case "down":
-		return tea.KeyPressMsg{Code: tea.KeyDown}
-	case "home":
-		return tea.KeyPressMsg{Code: tea.KeyHome}
-	case "end":
-		return tea.KeyPressMsg{Code: tea.KeyEnd}
-	case "left":
-		return tea.KeyPressMsg{Code: tea.KeyLeft}
-	case "right":
-		return tea.KeyPressMsg{Code: tea.KeyRight}
-	case "pgup":
-		return tea.KeyPressMsg{Code: tea.KeyPgUp}
-	case "pgdown":
-		return tea.KeyPressMsg{Code: tea.KeyPgDown}
-	case "backspace":
-		return tea.KeyPressMsg{Code: tea.KeyBackspace}
-	default:
-		// A printable keystroke carries both: the code is what the key table
-		// matches on, the text is what a widget inserts.
-		return tea.KeyPressMsg{Code: []rune(s)[0], Text: s}
-	}
-}
-
 // focus puts the cursor on a visible node by full path, loading whatever
 // landing there would load: moving the cursor is what reads a secret, so a test
 // that jumped straight to one would otherwise be looking at an empty pane.
 func (h *harness) focus(path string) *node {
 	h.t.Helper()
 	h.m.adopt(h.ctx)
-	for i, r := range h.m.tree.visible {
+	for i, r := range h.m.tree.Nodes {
 		if r.kind != rowNode {
 			continue
 		}
 		n := r.node
 		if n.fullPath() == path || (n.kind != kindSecret && n.fullPath() == strings.TrimSuffix(path, "/")+"/") {
-			h.m.tree.cursor = i
+			h.m.tree.Cursor = i
 			h.run(h.m.onCursorMoved())
 			return n
 		}
@@ -280,8 +241,8 @@ func (h *harness) mountNamed(name string) *node {
 }
 
 func (h *harness) visiblePaths() []string {
-	out := make([]string, 0, len(h.m.tree.visible))
-	for _, r := range h.m.tree.visible {
+	out := make([]string, 0, len(h.m.tree.Nodes))
+	for _, r := range h.m.tree.Nodes {
 		if r.kind == rowNode {
 			out = append(out, r.node.fullPath())
 		}

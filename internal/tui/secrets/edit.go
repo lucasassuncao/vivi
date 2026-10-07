@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/lucasassuncao/bezel/draw"
+	"github.com/lucasassuncao/bezel/overlay"
 	"slices"
 	"strconv"
 	"strings"
@@ -285,7 +287,7 @@ func (m *Model) renderEditor(e *editor, width int) string {
 	if e.creating {
 		intent = "new secret - the save fails if the path already exists"
 	}
-	b.WriteString(m.st.Dim.Render(ui.Truncate(intent, width)))
+	b.WriteString(m.st.Dim.Render(draw.Cut(intent, width)))
 	b.WriteString("\n\n")
 
 	// The badge names what the keyboard is doing, in the place the mask badge
@@ -293,12 +295,12 @@ func (m *Model) renderEditor(e *editor, width int) string {
 	// differ by a caret that is easy to miss and invisible in a screenshot.
 	b.WriteString(m.st.HeadingBadged("data", m.editorBadge(e), width))
 	b.WriteString("\n")
-	b.WriteString(m.st.Help.Render(ui.Truncate(
+	b.WriteString(m.st.Help.Render(draw.Cut(
 		fmt.Sprintf("    %-*s %s", editorKeyWidth, "KEY", "VALUE"), width)))
 	b.WriteString("\n")
 
 	for i, f := range e.fields {
-		b.WriteString(ui.Truncate(m.editorRow(e, f, i), width))
+		b.WriteString(draw.Cut(m.editorRow(e, f, i), width))
 		b.WriteString("\n")
 	}
 
@@ -310,7 +312,7 @@ func (m *Model) renderEditor(e *editor, width int) string {
 	// show past the form's edge, naming keys that are letters in there.
 	if e.form == nil {
 		b.WriteString("\n")
-		b.WriteString(ui.Truncate(m.st.HintLine(editorKeys()), width))
+		b.WriteString(draw.Cut(m.st.HintLine(editorKeys()), width))
 	}
 	return b.String()
 }
@@ -331,7 +333,7 @@ func (m *Model) editorRow(e *editor, f field, i int) string {
 		flag = m.st.Changed.Render("~")
 	}
 
-	key := m.st.Key.Render(fmt.Sprintf("%-*s", editorKeyWidth, ui.Sanitize(f.key)))
+	key := m.st.Key.Render(fmt.Sprintf("%-*s", editorKeyWidth, draw.Sanitize(f.key)))
 	row := fmt.Sprintf("%s%s %s %s", cursor, flag, key, m.editorValue(f))
 
 	// The type rides on the row for every field that is not a plain string, and
@@ -358,9 +360,9 @@ func (m *Model) editorValue(f field) string {
 	}
 	if lines > 1 {
 		first, _, _ := strings.Cut(f.value, "\n")
-		return ui.Sanitize(first) + m.st.Dim.Render(fmt.Sprintf("  ⏎ +%d", lines-1))
+		return draw.Sanitize(first) + m.st.Dim.Render(fmt.Sprintf("  ⏎ +%d", lines-1))
 	}
-	return ui.Sanitize(f.value)
+	return draw.Sanitize(f.value)
 }
 
 // editorBadge says which of the editor's two states the keyboard is in: on the
@@ -416,35 +418,32 @@ func (m *Model) beginCreate() {
 	// path already ends in one, a directory's does not.
 	folder := strings.TrimSuffix(n.fullPath(), "/") + "/"
 
-	m.mode = confirming{confirmation: &confirmation{
-		title: "New secret in " + folder,
-		// What enter does and what it does not: nothing is written here. The
-		// check-and-set is the editor's to explain, at the save, where it bites.
-		lines: []string{
-			"A slash in the name makes folders: team/api/db.",
-			"Next comes the editor for its fields; nothing is written",
-			"until you save them there.",
-		},
-		input:        in,
-		inputLabel:   "name",
-		previewLabel: "path",
-		preview: func(typed string) string {
+	title := "New secret in " + folder
+	// What enter does and what it does not: nothing is written here. The
+	// check-and-set is the editor's to explain, at the save, where it bites.
+	lines := []string{
+		"A slash in the name makes folders: team/api/db.",
+		"Next comes the editor for its fields; nothing is written",
+		"until you save them there.",
+	}
+	p := overlay.NewPrompt(title, nil, m.st.Modal, m.st.Hint()).
+		WithInput(in).WithLabel("name").WithLines(lines...).WithAcceptHint("open the editor").
+		WithPreview("path", func(typed string) string {
 			typed = strings.Trim(strings.TrimSpace(typed), "/")
 			if typed == "" {
 				return m.st.Dim.Render(folder + "…")
 			}
-			return ui.Sanitize(folder + typed)
-		},
-		confirmLabel: m.st.HintLine([]ui.LegendEntry{
-			ui.Entry("enter", "open the editor"), ui.Entry("esc", "cancel"),
-		}),
-		// The name is free text, so the modal captures keystrokes even though
-		// it is not one of the dangerous ones.
-		capture: true,
-		// The typed name is filled in when the modal is accepted, which is the
-		// one moment the input still exists.
+			return draw.Sanitize(folder + typed)
+		})
+
+	m.ask(&confirmation{
+		title: title,
+		lines: lines,
+		// The name is free text, so the modal takes keystrokes though it is not
+		// one of the dangerous ones. It is filled in when the modal is accepted.
+		prompt:    &p,
 		onConfirm: confirmedCreateMsg{parent: n},
-	}}
+	})
 }
 
 // createParent is the folder a new secret would go in: the selected node, or
@@ -508,10 +507,10 @@ func (m *Model) keyEdit(e *editor, msg tea.KeyPressMsg) tea.Cmd {
 		m.confirmSave(e)
 	case "esc":
 		if e.dirty() {
-			m.mode = confirming{confirmation: newConfirm(
+			m.ask(newConfirm(
 				"Discard changes?",
 				append([]string{"The following changes will be lost:"}, e.changedKeys()...),
-				confirmedDiscardMsg{creating: e.creating})}
+				confirmedDiscardMsg{creating: e.creating}))
 			return nil
 		}
 		m.mode = browsing{}
@@ -572,7 +571,7 @@ func (m *Model) confirmSave(e *editor) {
 	// Cancelling a save is not discarding one: the editor is what the modal
 	// replaced, so it is where declining goes back to.
 	c.onCancel = restoreModeMsg{mode: editing{editor: e}}
-	m.mode = confirming{confirmation: c}
+	m.ask(c)
 }
 
 // casConflictModal explains a rejected write and offers the only two honest

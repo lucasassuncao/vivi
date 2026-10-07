@@ -1,6 +1,7 @@
 package secrets
 
 import (
+	"github.com/lucasassuncao/bezel/overlay"
 	"strings"
 	"testing"
 
@@ -129,7 +130,7 @@ func TestALongValueDoesNotStretchTheDiffAcrossTheTerminal(t *testing.T) {
 	h.press("r") // reveal it, which is when the value reaches the screen
 
 	for _, line := range strings.Split(stripANSI(h.m.Overlay(h.ctx)), "\n") {
-		if w := lineWidth(line); w > ui.ModalMaxInner+8 {
+		if w := lineWidth(line); w > overlay.MaxInner+8 {
 			t.Fatalf("the modal is %d columns wide on a 250-column terminal: %q", w, line)
 		}
 	}

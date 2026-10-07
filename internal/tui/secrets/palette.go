@@ -34,6 +34,13 @@ func (m *Model) SelectedSecret() bool {
 	return n != nil && n.kind == kindSecret
 }
 
+// SelectedVersioned reports a KV v2 secret under the cursor: one with a
+// history, so a soft delete and a whole-history destroy both exist for it.
+func (m *Model) SelectedVersioned() bool {
+	n := m.tree.current()
+	return n != nil && n.kind == kindSecret && n.kvVersion == vault.KV2
+}
+
 // HasSecret reports a secret loaded in the pane, which is what edit needs.
 func (m *Model) HasSecret() bool { return m.secret != nil }
 
@@ -42,9 +49,6 @@ func (m *Model) CanCreateHere() bool { return m.createParent() != nil }
 
 // HasVersions reports a history to open.
 func (m *Model) HasVersions() bool { return len(m.versions) > 0 }
-
-// HasSelection reports a secret the whole-history delete would address.
-func (m *Model) HasSelection() bool { return m.sel != nil }
 
 // ReadableVersion reports that the marked version still has data behind it.
 func (m *Model) ReadableVersion() bool {

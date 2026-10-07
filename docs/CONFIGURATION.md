@@ -65,7 +65,7 @@ The integration suite also refuses any `VAULT_ADDR` that is not loopback, whatev
 ## Themes
 
 
-By default the palette is adaptive: it follows the terminal background, so it reads on light and dark alike. Naming a theme replaces it with a fixed set of colours, drawn from [yedit](https://github.com/lucasassuncao/yedit)'s registry of 56.
+By default the palette is adaptive: it follows the terminal background, so it reads on light and dark alike. Naming a theme replaces it with a fixed set of colours, drawn from [bezel](https://github.com/lucasassuncao/bezel)'s registry of 58, the TUI library vivi is built on.
 
 ```bash
 vivi --list-themes
@@ -73,6 +73,6 @@ vivi --theme grape
 export VIVI_THEME=mint    # vivi has no config file; the environment is the preference
 ```
 
-One role is never taken from the theme: the warning colour. A soft-deleted version can be undeleted and a destroyed one cannot, so those two must not look alike, and yedit's palette has no colour that means "reversible damage". That role keeps the built-in amber under every theme.
+The warning colour is the role most themes leave out. A soft-deleted version can be undeleted and a destroyed one cannot, so those two must not look alike: a theme that names no warning colour keeps the built-in amber, and `plain` and `terminal` use ANSI yellow.
 
 There is deliberately no `vivi get` or `vivi ls`: the `vault` CLI already covers scripting. There is no `vivi doctor` either: every run checks the address, the token and the server that answers before drawing anything, and what your token may do at a given path is a section of the detail panel rather than a command of its own.

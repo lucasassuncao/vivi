@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/lucasassuncao/bezel/theme"
+	"github.com/lucasassuncao/bezel/themebrowser"
 	"io"
 	"os"
 	"os/signal"
@@ -69,11 +71,10 @@ VAULT_NAMESPACE, and has no configuration of its own.`,
 		Args:          cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if listThemes {
-				fmt.Fprint(cmd.OutOrStdout(), themeNames())
-				return nil
+				return themebrowser.BrowseInTerminal()
 			}
 
-			colors, err := resolveTheme(themeName)
+			th, err := resolveTheme(themeName)
 			if err != nil {
 				return err
 			}
@@ -81,12 +82,12 @@ VAULT_NAMESPACE, and has no configuration of its own.`,
 			if err != nil {
 				return err
 			}
-			return run(cmd.Context(), colors, policy)
+			return run(cmd.Context(), th, policy)
 		},
 	}
 
 	root.Flags().StringVar(&themeName, "theme", "", "colour theme to render with (default: adaptive, follows the terminal background; also read from "+ThemeEnvVar+")")
-	root.Flags().BoolVar(&listThemes, "list-themes", false, "list the available themes and exit")
+	root.Flags().BoolVar(&listThemes, "list-themes", false, "browse the available themes (printed as a list when not a terminal)")
 	root.Flags().StringVar(&readOnly, "read-only", "", `refuse every write: "on" always, "prod" only when the server is not a recognised sandbox, "off" never (also read from `+ReadOnlyEnvVar+")")
 	// A bare --read-only is the obvious spelling and has to mean the obvious, without this it would consume the next argument as its value.
 	root.Flags().Lookup("read-only").NoOptDefVal = "on"
@@ -99,7 +100,7 @@ VAULT_NAMESPACE, and has no configuration of its own.`,
 // run performs the startup checks and then hands the terminal to the browser.
 // The checks happen before the alternate screen: a TUI opening onto an empty
 // tree cannot say whether the token is bad, the address wrong, or Vault empty.
-func run(ctx context.Context, colors tui.Colors, readOnly app.ReadOnlyPolicy) (err error) {
+func run(ctx context.Context, th theme.Theme, readOnly app.ReadOnlyPolicy) (err error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -146,7 +147,7 @@ func run(ctx context.Context, colors tui.Colors, readOnly app.ReadOnlyPolicy) (e
 	}
 
 	model := tui.New(tui.Options{
-		Client: client, Token: token, Colors: colors, Ctx: ctx,
+		Client: client, Token: token, Theme: th, Ctx: ctx,
 		Access: access, ReadOnly: readOnly, Version: Version, Debug: debug,
 	})
 	// The alternate screen is asked for by the model's View now, the way every

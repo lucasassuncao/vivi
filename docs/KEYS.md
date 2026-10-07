@@ -16,7 +16,8 @@ Navigation is arrow keys and `enter`, everywhere. Letters are only ever actions,
 | `e` | edit the secret |
 | `a` | create a secret here |
 | `v` | version list |
-| `d` | delete the secret (in the version list, `d` diffs instead) |
+| `d` | soft-delete the secret; on KV v1 the delete is final (in the version list, `d` diffs instead) |
+| `M` | destroy the secret and its whole history, irreversible (KV v2, from the tree) |
 | `p` | on the Auth tab: go to the policy the selected role grants |
 | `R` | reload what this tab is showing |
 | `i` | token information  ·  `n` renew the token, in that panel |
@@ -117,7 +118,6 @@ In the version list (`v`):
 | `b` | rollback: writes a **new** version, deletes nothing |
 | `u` | undelete: reverse a soft delete, same version |
 | `D` | destroy: erase a version's data, irreversible |
-| `M` | delete the secret and its whole history, irreversible |
 
 ## `b`, `u`, `D`, `M`: four words for four different things
 
@@ -125,13 +125,13 @@ All four sound like some flavour of undo or delete, and none of them is a milder
 
 | Key | Where | Touches | Data comes back? | Still in the listing? |
 | --- | --- | --- | --- | --- |
-| `d` delete | tree / detail | one version, the one on screen, marked deleted | yes, with `u` | **yes** |
+| `d` soft delete | tree | one version, the one on screen, marked deleted | yes, with `u` | **yes** |
 | `u` undelete | version list | one soft-deleted version | yes: it *is* the undo | yes |
 | `b` rollback | version list | nothing: writes a new version | nothing was lost | yes |
 | `D` destroy | version list | one version's data, erased | no | **yes** |
-| `M` delete all | version list | every version **and** the metadata | no | **no** |
+| `M` destroy secret | tree | every version **and** the metadata | no | **no** |
 
-Note the `Where` column: soft delete is `d` pressed on the tree or in the detail pane. Inside the version list (`v`) the same key is **diff**, and the four operations above are the only ones that pane answers.
+Note the `Where` column: `d` and `M` act on the secret under the tree cursor. In the detail pane `d` removes the selected field instead, and inside the version list (`v`) it is **diff**.
 
 The pair worth reading twice is `D` and `M`. "Destroy" sounds like the end of the story and it is not: Vault answers `LIST` out of a secret's *metadata*, and destroy does not touch the metadata. So a destroyed secret stays in the tree: listed, selectable, and empty:
 

@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/lucasassuncao/bezel/bezeltest"
 )
 
 func TestPoliciesAndAuthTabsLoadOnDemand(t *testing.T) {
@@ -75,8 +77,8 @@ func TestJumpToAnUnknownPolicySaysSo(t *testing.T) {
 	h := newHarness(t)
 	h.run(h.m.jumpToPolicy("no-such-policy"))
 
-	if !strings.Contains(h.m.banner, "not in the list") {
-		t.Errorf("expected the jump to report the miss, banner=%q", h.m.banner)
+	if !strings.Contains(h.m.banner(), "not in the list") {
+		t.Errorf("expected the jump to report the miss, banner=%q", h.m.banner())
 	}
 }
 
@@ -125,20 +127,18 @@ func TestThePolicyTabCanCopyByName(t *testing.T) {
 	if !offers(h, "copy-policy") {
 		t.Fatal("the policies tab offers no copy command")
 	}
-	// ":copy" was a unique prefix here until the reference panel started
-	// generating a command per line. Three of them now start with it, so the
-	// bare word is ambiguous and the palette says so rather than guessing.
-	if _, _, err := h.m.resolve("copy"); err == nil {
-		t.Error(`"copy" resolved to a single command with three of them on the tab`)
+	// ":copy" is the secrets tab's and refused here. Its siblings on this tab
+	// start with it, so the palette stays open on them rather than guessing.
+	h.runCommand("copy")
+	if h.mode() != "command" || !strings.Contains(h.view(), "copy is not available here") {
+		t.Errorf(`"copy" ran or closed with its siblings on the tab: mode %q`, h.mode())
 	}
+	h.press("esc")
 
 	// The exact name still wins, which is the first rule of resolution.
-	c, _, err := h.m.resolve("copy-policy")
-	if err != nil {
-		t.Fatalf(`resolve("copy-policy"): %v`, err)
-	}
-	if c.name != "copy-policy" {
-		t.Errorf(`"copy-policy" resolved to %q`, c.name)
+	h.runCommand("copy-policy")
+	if h.mode() != "browse" || h.copied() == "" {
+		t.Errorf(`"copy-policy" did not run: mode %q, banner %q`, h.mode(), h.m.banner())
 	}
 }
 
@@ -156,7 +156,7 @@ func TestMovingThePolicyCursorDropsThePreviousDocument(t *testing.T) {
 
 	// Update and not press: what is being tested is the frame drawn before the
 	// answer, which the harness would otherwise settle away.
-	_, cmd := h.m.Update(keyMsg("down"))
+	_, cmd := h.m.Update(bezeltest.Key("down"))
 	if h.m.policiesTab.Doc() == previous {
 		t.Fatal("the previous document is still in the pane, under the new name")
 	}

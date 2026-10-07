@@ -122,7 +122,7 @@ It prints two tokens: `root`, and a demo token denied on `kv/restricted/` so you
 
 ### Themes
 
-The palette is adaptive by default and follows the terminal background. `--theme`, or `VIVI_THEME`, replaces it with one of yedit's 56. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md#themes).
+The palette is adaptive by default and follows the terminal background. `--theme`, or `VIVI_THEME`, replaces it with one of bezel's 58. See [docs/CONFIGURATION.md](docs/CONFIGURATION.md#themes).
 
 ## Keys
 

@@ -5,11 +5,13 @@ package tui
 
 import (
 	"context"
+	"github.com/lucasassuncao/bezel/draw"
+	"github.com/lucasassuncao/bezel/theme"
 	"io"
 
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
-	"github.com/atotto/clipboard"
+	"github.com/lucasassuncao/bezel/shell"
 	"github.com/lucasassuncao/vivi/internal/app"
 	"github.com/lucasassuncao/vivi/internal/tui/activity"
 	"github.com/lucasassuncao/vivi/internal/tui/auth"
@@ -30,45 +32,34 @@ const (
 
 var tabNames = []string{"Secrets", "Policies", "Auth", "Activity"}
 
-// mode is ui.Mode under the name this package's hundred call sites already use.
-// The interface itself has to live in ui; see the note there.
-type mode = ui.Mode
+// What is in front of the user besides a tab is the shell's overlay stack:
+// the help panel, the token panel, the command line. browsing reports that
+// none of them is up - a tab's own modals are the tab's, and the two never
+// meet: ":" opened over the version list leaves the version list where it was.
+func (m *Model) browsing() bool { return !m.sh.HasOverlay() }
 
-// These four are the shell's own: the command line, the help panel and the
-// token panel, plus the idle state. A tab's modes are the tab's, and the two
-// machines never meet - ":" opened over the version list leaves the version
-// list exactly where it was.
-type browsing struct{}
+// modeName is what the crash note says about where the user was.
+func (m *Model) modeName() string {
+	switch {
+	case m.showingCommands():
+		return "command"
+	case m.showingHelp():
+		return "help"
+	case m.showingToken():
+		return "token"
+	}
+	return "browse"
+}
 
-// commanding is the colon command line, together with the mode it will return
-// to when it closes. See cmdline.
-type commanding struct{ line *cmdline }
-
-type showingHelp struct{}
-
-type showingToken struct{}
-
-// modeIs reports which mode the interface is in, for the readers that do not
-// care what it carries. A type assertion and not a Name() comparison: the
-// misspelled string compiled and answered false for the life of the process.
-func modeIs[M mode](m *Model) bool {
-	_, ok := m.currentMode().(M)
+func (m *Model) showingHelp() bool {
+	_, ok := m.sh.TopOverlay().(helpOverlay)
 	return ok
 }
 
-// currentMode is m.mode with the one value it must never be: nil, which the
-// type system hands to any bad assignment and which then fails a keystroke
-// later, in a blameless method. It reads and does not repair; ensureState does.
-func (m *Model) currentMode() mode {
-	if m.mode == nil {
-		return browsing{}
-	}
-	return m.mode
+func (m *Model) showingToken() bool {
+	_, ok := m.sh.TopOverlay().(tokenOverlay)
+	return ok
 }
-
-func (browsing) Name() string     { return "browse" }
-func (showingHelp) Name() string  { return "help" }
-func (showingToken) Name() string { return "token" }
 
 // Options configures the browser.
 type Options struct {
@@ -78,9 +69,8 @@ type Options struct {
 	// context, so quitting cancels whatever is still in flight instead of
 	// leaving it to run out its own timeout. The zero value is Background.
 	Ctx context.Context
-	// Colors is the palette to render with. The zero value is the built-in
-	// adaptive theme.
-	Colors Colors
+	// Theme is what to render with. The zero value is bezel's adaptive default.
+	Theme theme.Theme
 
 	// Access is how much of the Vault this session may change. The zero value
 	// is app.ReadWrite, which is the ordinary session.
@@ -105,12 +95,14 @@ type Model struct {
 	st     ui.Styles
 	// colors is the theme the styles were built from, kept because they are
 	// built twice: once dark, and again when the terminal says otherwise.
-	colors Colors
+	theme theme.Theme
 
 	width, height int
 
-	tab  tab
-	mode mode
+	// sh is the chrome: header, tab strip, panels, status row, legend and the
+	// overlays floating over the panes. vivi keeps the keys.
+	sh  shell.Shell
+	tab tab
 
 	// version is vivi's own, shown in the header. Not the Vault's.
 	version string
@@ -137,14 +129,9 @@ type Model struct {
 	detail viewport.Model
 	focus  ui.Focus
 
-	banner    string
-	bannerErr bool
-	bannerID  int
-
-	// clip puts text on the system clipboard. A field so tests can replace it:
-	// the suite must not write to the machine's clipboard, and asserting through
-	// the real one really asserted on how fast clip.exe starts.
-	clip func(string) error
+	// bannerCmds are the expiry timers of banners set during this Update, so
+	// a handler that has no command to return still gets its banner cleared.
+	bannerCmds []tea.Cmd
 
 	pending int
 }
@@ -162,14 +149,13 @@ func New(opts Options) *Model {
 	}
 
 	m := &Model{
-		mode:   browsing{},
 		detail: detail,
 		ctx:    ctx,
 		client: opts.Client,
-		colors: opts.Colors,
+		theme:  opts.Theme,
 		// Dark until the terminal answers otherwise, which is also what a
 		// terminal that will not answer is treated as. See Init.
-		st:          ui.NewStyles(opts.Colors, true),
+		st:          ui.NewStyles(opts.Theme, true),
 		activityTab: activity.New(),
 		token:       opts.Token,
 		server:      opts.Client.Server(),
@@ -177,7 +163,6 @@ func New(opts Options) *Model {
 		readOnly:    opts.ReadOnly,
 		version:     opts.Version,
 		debug:       opts.Debug,
-		clip:        clipboard.WriteAll,
 	}
 
 	// The tabs that reach a server are built here and not in the literal: each
@@ -187,7 +172,29 @@ func New(opts Options) *Model {
 	m.policiesTab = policies.New(opts.Client, m)
 	m.authTab = auth.New(opts.Client, m)
 
+	m.sh = m.newShell()
 	return m
+}
+
+// newShell builds the chrome. The tabs answer for their own legends through
+// tabAdapter; the header and the write filter read the model, which is a
+// pointer, so the callbacks stay current.
+func (m *Model) newShell() shell.Shell {
+	tabs := make([]shell.Tab, len(tabNames))
+	for i := range tabNames {
+		tabs[i] = tabAdapter{m: m, t: tab(i)}
+	}
+	return shell.New(shell.Config{
+		Layout: m.layout(),
+		Tabs:   tabs,
+		Theme:  m.st.Shell(),
+		Title:  "vivi",
+		Header: func(shell.Context, int) []string { return m.headerLines() },
+		Can:    m.can,
+		// vivi answers every key itself: its tabs' actions are display only.
+		StatusTTL:   bannerLife,
+		LegendLines: legendMaxLines,
+	})
 }
 
 // Init asks the terminal what colour its background is, along with the first
@@ -202,21 +209,20 @@ func (m *Model) Init() tea.Cmd {
 // which is the one component holding state of its own.
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	defer m.guardPanic()
-	shown := m.bannerID
 	cmd := m.update(msg)
+	m.relayout()
 	m.syncDetail()
 	// Every banner expires, including the ones set by a handler with no command
 	// to return: a refusal that stays up until the next message is a session
 	// that looks like it is still refusing.
-	if m.bannerID != shown && m.banner != "" {
-		cmd = tea.Batch(cmd, expireBanner(m.bannerID))
+	if len(m.bannerCmds) > 0 {
+		cmd = tea.Batch(append([]tea.Cmd{cmd}, m.bannerCmds...)...)
+		m.bannerCmds = nil
 	}
 	return m, cmd
 }
 
 func (m *Model) update(msg tea.Msg) tea.Cmd {
-	m.ensureState()
-
 	switch msg := msg.(type) {
 	// What a tab asks the parent for. A tab owns its own state and nothing else,
 	// so everything outside it arrives here as a request rather than a write.
@@ -244,7 +250,7 @@ func (m *Model) update(msg tea.Msg) tea.Cmd {
 		return nil
 
 	case ui.CopyMsg:
-		return m.copyToClipboard(msg.Op, msg.What, msg.Text)
+		return m.sh.Copy(msg.Text, msg.What, msg.Op)
 
 	case ui.RecordedMsg:
 		m.activityTab.Record(msg.Op, msg.Path, msg.Detail, msg.Err)
@@ -260,14 +266,24 @@ func (m *Model) update(msg tea.Msg) tea.Cmd {
 	case ui.OpenCmdlineMsg:
 		return m.openCmdline()
 
+	case commandMsg:
+		// Judged again: an answer may have moved it out of scope since enter.
+		if !msg.c.scope(m) {
+			return m.failWith(msg.c.name + " is not available here")
+		}
+		return msg.c.run(m, msg.arg)
+
 	case tea.BackgroundColorMsg:
 		// The terminal answering the query Init sent. A light background flips
 		// the built-in palette; a named theme is fixed colours and unmoved.
-		m.st = ui.NewStyles(m.colors, msg.IsDark())
+		m.st = ui.NewStyles(m.theme, msg.IsDark())
+		m.sh = m.sh.SetTheme(m.st.Shell())
 		return nil
 
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		m.sh, _, _ = m.sh.Update(msg)
+		m.relayout()
 		// The one widget sized to the terminal rather than measured at render:
 		// a text area has to know its width to wrap and its height to scroll,
 		// and it is the Secrets tab that holds one.
@@ -281,27 +297,15 @@ func (m *Model) update(msg tea.Msg) tea.Cmd {
 
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
-
-	case bannerExpiredMsg:
-		if msg.id == m.bannerID {
-			m.banner, m.bannerErr = "", false
-		}
-		return nil
 	}
 
+	// The shell's own messages: a banner expiring, the palette finishing, a
+	// command picked in it, a paste into it. Everything else is the tabs'.
+	if sh, handled, cmd := m.sh.Update(msg); handled {
+		m.sh = sh
+		return cmd
+	}
 	return m.handleData(msg)
-}
-
-// ensureState restores the fields the loop writes into without checking first.
-// A write to a nil map is a panic, not a no-op, and these are replaced whole in
-// several places - so the invariant is "never nil when a key arrives".
-func (m *Model) ensureState() {
-	// The repair currentMode deliberately does not do. Reading a missing mode
-	// answers "browsing" without writing, because reading happens while
-	// rendering; putting it back happens here, once, before any handler runs.
-	if m.mode == nil {
-		m.mode = browsing{}
-	}
 }
 
 // syncDetail projects the model onto the detail viewport, whose only state of
@@ -309,26 +313,20 @@ func (m *Model) ensureState() {
 // what lets View be pure, and frees followFieldCursor from needing a frame first.
 func (m *Model) syncDetail() {
 	// Both layouts keep a viewport: narrow, the detail is the only pane once it
-	// has focus and needs scrolling more, not less. detailGeometry decides both
-	// sizes, so the renderer and this agree by construction.
-	width, height := m.detailGeometry(m.bodyHeight())
+	// has focus and needs scrolling more, not less. The shell placed it, so the
+	// renderer and this agree by construction.
+	width, height := m.detailGeometry()
 
 	right := m.renderDetail(width)
 
 	m.detail.SetWidth(width)
-	m.detail.SetHeight(height)
 	m.detail.SetContent(right)
-}
-
-// routeToInput hands a message to whichever text input is focused. Anything the
-// loop does not recognise belongs to a nested component - the blink timer sends
-// an unexported cursor message - and without this the caret stalls.
-func (m *Model) routeToInput(msg tea.Msg) tea.Cmd {
-	var cmd tea.Cmd
-	if current, ok := m.mode.(commanding); ok && current.line != nil {
-		current.line.input, cmd = current.line.input.Update(msg)
+	// Overflowing, the last row is kept for "↓ N more lines", as in the lists.
+	// Set once: a full height first would clamp the scroll a row short.
+	if height > 1 && m.detail.TotalLineCount() > height {
+		height--
 	}
-	return cmd
+	m.detail.SetHeight(height)
 }
 
 // reloadCurrent drops what the tab in front of the user is showing and fetches
@@ -383,7 +381,15 @@ func (m *Model) setTab(t tab) {
 		m.currentTab().Blur()
 	}
 	m.tab = t
-	m.mode = browsing{}
+	m.sh = m.sh.SetTab(int(t))
+	m.closeOverlays()
+}
+
+// closeOverlays drops the shell's own panels: the command line, help, token.
+func (m *Model) closeOverlays() {
+	for m.sh.HasOverlay() {
+		m.sh = m.sh.Pop()
+	}
 }
 
 // ensureTabLoaded fetches a tab's data the first time it is shown.
@@ -394,10 +400,18 @@ func (m *Model) ensureTabLoaded() tea.Cmd {
 // notify shows a transient message in the footer. Sanitized where it is set
 // rather than where it is drawn: most banners name a path or an error the
 // server worded, and the footer is one line that outlives every pane.
-func (m *Model) notify(msg string) {
-	m.banner, m.bannerErr = ui.Sanitize(msg), false
-	m.bannerID++
+func (m *Model) notify(msg string) { m.setBanner(draw.Sanitize(msg), shell.OK) }
+
+// setBanner puts a message on the status row for bannerLife, keeping the
+// expiry timer for Update to return.
+func (m *Model) setBanner(text string, level shell.Level) {
+	var cmd tea.Cmd
+	m.sh, cmd = m.sh.SetStatus(text, level, bannerLife)
+	m.bannerCmds = append(m.bannerCmds, cmd)
 }
+
+// banner is the status row's message, empty when none is up.
+func (m *Model) banner() string { return m.sh.Status() }
 
 // fail shows an error in the footer and returns the command that clears it.
 // Errors never tear down the interface: a denied path or a failed write is
@@ -409,12 +423,13 @@ func (m *Model) fail(what string, err error) tea.Cmd {
 // failWith shows a message the caller has already worded, for the failures where
 // the error's own wording would be misleading.
 func (m *Model) failWith(msg string) tea.Cmd {
-	m.banner = ui.Sanitize(msg)
-	m.bannerErr = true
-	m.bannerID++
-	return expireBanner(m.bannerID)
+	m.setBanner(draw.Sanitize(msg), shell.Error)
+	return nil
 }
 
 // humanize is ui.Humanize, kept as a name here because thirty call sites read
 // better without the qualifier and because a tab now needs the same wording.
 func humanize(err error) string { return ui.Humanize(err) }
+
+// bannerIsError reports whether the status row shows a failure.
+func (m *Model) bannerIsError() bool { return m.sh.StatusLevel() == shell.Error }

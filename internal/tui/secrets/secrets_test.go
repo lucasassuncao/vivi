@@ -1,10 +1,12 @@
 package secrets
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
+	"github.com/lucasassuncao/vivi/internal/vault"
 )
 
 // An answer for a path the cursor has left describes another secret, and this
@@ -64,11 +66,11 @@ func TestTheDetailPaneSaysDeleteTakesTheField(t *testing.T) {
 
 	_, keys := h.m.Legend(h.ctx)
 	for _, e := range keys {
-		if e.Key != "d" {
+		if e.Help().Key != "d" {
 			continue
 		}
-		if e.Action != "delete field" {
-			t.Errorf("the pane offers [d] %q, want \"delete field\"", e.Action)
+		if e.Help().Desc != "delete field" {
+			t.Errorf("the pane offers [d] %q, want \"delete field\"", e.Help().Desc)
 		}
 		return
 	}
@@ -82,8 +84,8 @@ func TestRevealLegendNamesTheNextPress(t *testing.T) {
 	action := func(h *harness) string {
 		_, keys := h.m.Legend(h.ctx)
 		for _, e := range keys {
-			if e.Key == "r" {
-				return e.Action
+			if e.Help().Key == "r" {
+				return e.Help().Desc
 			}
 		}
 		return ""
@@ -383,7 +385,7 @@ func TestActionsWorkAndAreAdvertisedInTheDetailPane(t *testing.T) {
 	_, keys := h.m.Legend(h.ctx)
 	advertised := map[string]bool{}
 	for _, entry := range keys {
-		advertised[entry.Key] = true
+		advertised[entry.Help().Key] = true
 	}
 	// One key each. The copy family used to ride a single pair here, "y/Y/C",
 	// read positionally as value, path and command; the last two are printed in
@@ -400,8 +402,8 @@ func TestActionsWorkAndAreAdvertisedInTheDetailPane(t *testing.T) {
 	// And the words have to be the ones that distinguish the pane from the list.
 	want := map[string]string{"r": "reveal field", "y": "copy field"}
 	for _, e := range keys {
-		if w, ok := want[e.Key]; ok && e.Action != w {
-			t.Errorf("the pane advertises %q as %q, want %q", e.Key, e.Action, w)
+		if w, ok := want[e.Help().Key]; ok && e.Help().Desc != w {
+			t.Errorf("the pane advertises %q as %q, want %q", e.Help().Key, e.Help().Desc, w)
 		}
 	}
 
@@ -470,6 +472,38 @@ func TestTheMetadataBlockDescribesTheSecretNotTheVersion(t *testing.T) {
 	// the half that was being read as a bug in the version selector.
 	if !strings.Contains(historical, "current version  4") {
 		t.Errorf("the metadata should still name the secret's current version:\n%s", historical)
+	}
+}
+
+// custom_metadata is where teams put owner, ticket and rotation notes, and it
+// was fetched and then dropped. It shows when set, sorted, and not otherwise.
+func TestCustomMetadataIsShownWhenSet(t *testing.T) {
+	h := newHarness(t)
+	h.resize(120, 60)
+	h.open("kv/app/prod/db")
+	if strings.Contains(h.view(), "CUSTOM METADATA") {
+		t.Fatalf("a secret without custom_metadata grew a section for it:\n%s", h.view())
+	}
+
+	h = newHarness(t)
+	h.resize(120, 60)
+	h.server.SetCustomMetadata("kv", "app/prod/db", map[string]any{
+		"owner": "team-db", "rotate": "quarterly", "evil": "a\x1b[2Jb",
+	})
+	h.open("kv/app/prod/db")
+	view := h.view()
+	if !strings.Contains(view, "CUSTOM METADATA") {
+		t.Fatalf("the custom_metadata section is missing:\n%s", view)
+	}
+	evil, owner, rotate := strings.Index(view, "evil"), strings.Index(view, "owner"), strings.Index(view, "rotate")
+	if evil < 0 || owner < 0 || rotate < 0 || evil >= owner || owner >= rotate {
+		t.Errorf("the custom_metadata keys are missing or unsorted:\n%s", view)
+	}
+	if !strings.Contains(view, "team-db") || !strings.Contains(view, "quarterly") {
+		t.Errorf("the custom_metadata values are missing:\n%s", view)
+	}
+	if strings.Contains(view, "\x1b[2J") {
+		t.Error("a custom_metadata value reached the terminal unsanitized")
 	}
 }
 
@@ -600,5 +634,37 @@ func TestTheAccessPanelNamesAPolicyItCouldNotRead(t *testing.T) {
 	}
 	if !strings.Contains(view, "broken") {
 		t.Errorf("the panel did not name the policy it could not read:\n%s", view)
+	}
+}
+
+// versionsStartLine is what the version cursor scrolls by, so it has to agree
+// with where the version rows actually land.
+func TestVersionsStartWhereTheCursorThinksTheyDo(t *testing.T) {
+	h := newHarness(t)
+	h.open("kv/app/prod/db")
+	if len(h.m.versions) == 0 {
+		t.Fatal("precondition: the secret should have versions")
+	}
+
+	pane := m2lines(h.m.renderSecretDetail(60))
+	line := h.m.versionsStartLine()
+	want := "v" + strconv.Itoa(h.m.versions[0].Version) + " "
+	if line >= len(pane) || !strings.Contains(pane[line], want) {
+		t.Errorf("line %d should be the first version %q\nfull pane:\n%s", line, want, strings.Join(pane, "\n"))
+	}
+}
+
+// On a deleted version the banner stands where the fields were, and the
+// version rows move with it.
+func TestVersionsStartBelowTheDeletedBanner(t *testing.T) {
+	h := newHarness(t)
+	h.open("kv/app/prod/db")
+	h.m.detailErr = vault.ErrNotFound // what a read of a deleted version answers
+
+	pane := m2lines(h.m.renderSecretDetail(60))
+	line := h.m.versionsStartLine()
+	want := "v" + strconv.Itoa(h.m.versions[0].Version) + " "
+	if line >= len(pane) || !strings.Contains(pane[line], want) {
+		t.Errorf("line %d should be the first version %q\nfull pane:\n%s", line, want, strings.Join(pane, "\n"))
 	}
 }

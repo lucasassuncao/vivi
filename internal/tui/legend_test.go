@@ -56,7 +56,7 @@ func TestLegendFitsEverythingWhenThereIsRoom(t *testing.T) {
 	// The first and last pairs of the list: if both are present nothing in
 	// between was dropped. The middle keys are not named here because what they
 	// are depends on the node under the cursor.
-	for _, want := range []string{"[?]", "[d] delete"} {
+	for _, want := range []string{"[?]", "[M] destroy secret"} {
 		if !strings.Contains(line, want) {
 			t.Errorf("at 300 columns %s should fit: %q", want, line)
 		}
@@ -92,10 +92,10 @@ func TestTheLegendNeverOffersAKeyThePaletteWouldNot(t *testing.T) {
 				offered[c.key] = true
 			}
 			for _, e := range h.m.legend() {
-				if navigation[e.Key] || offered[e.Key] {
+				if navigation[e.Help().Key] || offered[e.Help().Key] {
 					continue
 				}
-				t.Errorf("the bar offers [%s] %s, which the palette does not", e.Key, e.Action)
+				t.Errorf("the bar offers [%s] %s, which the palette does not", e.Help().Key, e.Help().Desc)
 			}
 		})
 	}
@@ -153,11 +153,11 @@ func TestLegendNamesTheNarrowVerbForOpeningASecret(t *testing.T) {
 
 	var offered string
 	for _, hi := range h.m.legend() {
-		if strings.Contains(hi.Action, "focus detail") {
+		if strings.Contains(hi.Help().Desc, "focus detail") {
 			t.Errorf("a terminal too narrow for two panes still offers to focus one: %+v", hi)
 		}
-		if strings.Contains(hi.Action, "open secret") {
-			offered = hi.Key
+		if strings.Contains(hi.Help().Desc, "open secret") {
+			offered = hi.Help().Key
 		}
 	}
 	if offered == "" {
@@ -197,7 +197,7 @@ func TestTheLegendOnlyNamesKeysThatDoSomethingHere(t *testing.T) {
 
 		var named []string
 		for _, entry := range h.m.legend() {
-			named = append(named, entry.Action)
+			named = append(named, entry.Help().Desc)
 		}
 		line := strings.Join(named, " · ")
 
@@ -236,7 +236,7 @@ func TestTheHelpPanelAgreesWithTheLegendAboutTheDetailPane(t *testing.T) {
 
 		legendScrolls := false
 		for _, entry := range h.m.legend() {
-			if entry.Action == "scroll" || entry.Action == "fields" {
+			if entry.Help().Desc == "scroll" || entry.Help().Desc == "fields" {
 				legendScrolls = true
 			}
 		}
@@ -264,6 +264,68 @@ func TestTheLegendOffersTheCommandLine(t *testing.T) {
 	}
 }
 
+// The help and token panels sit over the panes, not in place of them: the
+// footer keeps the legend it had before the panel opened.
+func TestTheHelpAndTokenPanelsKeepTheLegend(t *testing.T) {
+	for name, open := range map[string]func(*Model){
+		"help":  func(m *Model) { m.sh = m.sh.Push(helpOverlay{m}) },
+		"token": func(m *Model) { m.sh = m.sh.Push(tokenOverlay{m}) },
+	} {
+		h := newHarness(t)
+		before, screen := h.m.renderLegend(120), footer(h.view())
+		open(h.m)
+		if after := h.m.renderLegend(120); after != before {
+			t.Errorf("%s: the legend changed under the panel:\nbefore %q\nafter  %q", name, before, after)
+		}
+		// What the shell draws, and not only what vivi computes for it.
+		if after := footer(h.view()); after != screen {
+			t.Errorf("%s: the drawn footer changed under the panel:\nbefore %q\nafter  %q", name, screen, after)
+		}
+	}
+}
+
+// No modal changes the legend: it is the screen's under every panel, palette,
+// confirmation and form, each of which names its keys inside its own box.
+func TestNoModalChangesTheLegend(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		screen, open []string
+		// shows proves the modal opened where the mode does not change.
+		shows string
+	}{
+		{"command palette", nil, []string{":"}, ""},
+		{"help", nil, []string{"?"}, ""},
+		{"token", nil, []string{"i"}, ""},
+		{"delete confirmation", nil, []string{"d"}, ""},
+		{"destroy confirmation", []string{"V"}, []string{"D"}, ""},
+		{"field form", []string{"enter", "e"}, []string{"enter"}, "[ctrl+s] apply"},
+	} {
+		h := newHarness(t)
+		h.open("kv/app/prod/db")
+		h.press(tc.screen...)
+		rows := len(h.m.legendLines(h.m.width))
+		before, mode := lastRows(h.view(), rows), h.mode()
+		h.press(tc.open...)
+		if opened := h.mode() != mode || (tc.shows != "" && strings.Contains(h.view(), tc.shows)); !opened {
+			t.Fatalf("%s: %v opened nothing, still %q", tc.name, tc.open, mode)
+		}
+		if after := lastRows(h.view(), rows); after != before {
+			t.Errorf("%s changed the legend:\nbefore %q\nafter  %q", tc.name, before, after)
+		}
+	}
+}
+
+func lastRows(view string, n int) string {
+	rows := strings.Split(view, "\n")
+	return strings.Join(rows[max(0, len(rows)-n):], "\n")
+}
+
+// footer is the screen's last three rows: the status and the legend.
+func footer(view string) string {
+	rows := strings.Split(view, "\n")
+	return strings.Join(rows[max(0, len(rows)-3):], "\n")
+}
+
 // The status line says nothing about the tree until there is something to say.
 // A count of expanded nodes reports what was opened rather than what exists, so
 // it changes as you browse. The filter stays: the user put the pane into it.
@@ -283,28 +345,23 @@ func TestTheSecretsFooterOnlyReportsTheFilter(t *testing.T) {
 	}
 }
 
-// The point of the second line: the secrets legend names ten actions and wants
-// 143 columns, so on one line "drop the rare keys first" was the permanent
-// state rather than a degradation path. Two lines hold it from here up.
-//
-// The floor climbed from eighty as words were added: "[tab] change tab" took it
-// to eighty-four, and naming what "r" and "y" act on - "reveal secret", "copy
-// secret" - to eighty-eight. Line two has no slack, and each addition also
-// summons the "+n in [?]" mark, so one entry in pushes two out.
+// The secrets legend names a dozen actions, so on one line "drop the rare keys
+// first" was the permanent state rather than a degradation path. Two lines held
+// it at eighty-eight until "[M] destroy secret" joined the tree; three do now.
 func TestTheWholeLegendSurvivesAnEightyEightColumnTerminal(t *testing.T) {
 	h := newHarness(t)
 	h.open("kv/app/prod/db")
 	h.m.Update(tea.WindowSizeMsg{Width: 88, Height: 30})
 
 	lines := h.m.legendLines(88)
-	if len(lines) != 2 {
-		t.Errorf("the legend takes %d lines at eighty-eight columns, want 2", len(lines))
+	if len(lines) > legendMaxLines {
+		t.Errorf("the legend takes %d lines at eighty-eight columns, want at most %d", len(lines), legendMaxLines)
 	}
 
 	rendered := strings.Join(lines, "\n")
 	for _, e := range h.m.legend() {
-		if !strings.Contains(rendered, e.Action) {
-			t.Errorf("%q is missing from the legend at eighty-eight columns:\n%s", e.Action, rendered)
+		if !strings.Contains(rendered, e.Help().Desc) {
+			t.Errorf("%q is missing from the legend at eighty-eight columns:\n%s", e.Help().Desc, rendered)
 		}
 	}
 	if strings.Contains(rendered, "in [?]") {
@@ -312,7 +369,7 @@ func TestTheWholeLegendSurvivesAnEightyEightColumnTerminal(t *testing.T) {
 	}
 }
 
-// Below about seventy columns not even two lines hold it, and the mark has to
+// Narrow enough and not even the whole footer holds it, and the mark has to
 // say how many keys it stands for: an ellipsis says something is missing, a
 // count says one or six - the difference between pressing on and pressing "?".
 func TestTheLegendCountsWhatItHadToDrop(t *testing.T) {
@@ -329,7 +386,7 @@ func TestTheLegendCountsWhatItHadToDrop(t *testing.T) {
 
 	shown := 0
 	for _, e := range h.m.legend() {
-		if strings.Contains(rendered, e.Action) {
+		if strings.Contains(rendered, e.Help().Desc) {
 			shown++
 		}
 	}

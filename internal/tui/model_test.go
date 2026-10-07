@@ -61,8 +61,8 @@ func TestModelWithoutAContextStillRuns(t *testing.T) {
 func TestModePredicatesFollowTheMode(t *testing.T) {
 	h := newHarness(t)
 
-	if !modeIs[browsing](h.m) {
-		t.Fatalf("a fresh model is not browsing: %s", h.m.currentMode().Name())
+	if !h.m.browsing() {
+		t.Fatalf("a fresh model is not browsing: %s", h.m.modeName())
 	}
 
 	// The tab's own modes are the tab's to report, and the shell's machine is
@@ -74,8 +74,8 @@ func TestModePredicatesFollowTheMode(t *testing.T) {
 	}
 
 	h.press(":")
-	if !modeIs[commanding](h.m) {
-		t.Errorf(`":" did not open the command line: %s`, h.m.currentMode().Name())
+	if !h.m.showingCommands() {
+		t.Errorf(`":" did not open the command line: %s`, h.m.modeName())
 	}
 	if got := h.m.secretsTab.State().Mode; got != "versions" {
 		t.Errorf("the command line closed the version list behind it: %s", got)

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lucasassuncao/bezel/draw"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
 
@@ -13,6 +14,7 @@ import (
 // 1102 times a run. Here, not in newHarness, or parallel tests would race.
 func TestMain(m *testing.M) {
 	ui.BlinkSpeed = time.Millisecond
+	draw.BlinkSpeed = time.Millisecond // bezel's own inputs: the palette's
 	bannerLife = 10 * time.Millisecond
 	clockInterval = time.Millisecond
 

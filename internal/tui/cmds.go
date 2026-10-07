@@ -30,9 +30,6 @@ type renewMsg struct {
 	err  error
 }
 
-// bannerExpiredMsg clears a transient footer message.
-type bannerExpiredMsg struct{ id int }
-
 // clockMsg brings the render around so the header's token countdown moves on
 // its own. Nothing in the model changes: the countdown is computed at render
 // time, and without a wake-up it would sit at whatever the last key left.
@@ -78,11 +75,5 @@ func (m *Model) renewToken() tea.Cmd {
 	return m.request(func(ctx context.Context, c vault.Client) ui.RequestAnswer {
 		info, err := c.RenewToken(ctx)
 		return renewMsg{info: info, err: err}
-	})
-}
-
-func expireBanner(id int) tea.Cmd {
-	return tea.Tick(bannerLife, func(time.Time) tea.Msg {
-		return bannerExpiredMsg{id: id}
 	})
 }

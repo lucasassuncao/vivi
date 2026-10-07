@@ -7,6 +7,8 @@ package auth
 import (
 	"context"
 	"fmt"
+	"github.com/lucasassuncao/bezel/draw"
+	"github.com/lucasassuncao/bezel/legend"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -137,7 +139,7 @@ func (m *Model) RenderList(width, _ int, ctx ui.Context) string {
 		if i == m.methodCursor && !m.onRoles {
 			cursor = st.Cursor.Render("● ")
 		}
-		b.WriteString(ui.Truncate(cursor+st.Mount.Render(ui.Sanitize(meth.Path))+st.Dim.Render("  "+ui.Sanitize(meth.Type)), width))
+		b.WriteString(draw.Cut(cursor+st.Mount.Render(draw.Sanitize(meth.Path))+st.Dim.Render("  "+draw.Sanitize(meth.Type)), width))
 		b.WriteString("\n")
 
 		if i != m.methodCursor {
@@ -148,11 +150,11 @@ func (m *Model) RenderList(width, _ int, ctx ui.Context) string {
 			if m.onRoles && j == m.roleCursor {
 				rc = st.Cursor.Render("  › ")
 			}
-			line := rc + ui.Sanitize(role.Name)
+			line := rc + draw.Sanitize(role.Name)
 			if role.ReadErr != nil {
 				line += st.Warn.Render("  unreadable")
 			}
-			b.WriteString(ui.Truncate(line, width))
+			b.WriteString(draw.Cut(line, width))
 			b.WriteString("\n")
 		}
 	}
@@ -183,13 +185,13 @@ func (m *Model) RenderDetail(width int, ctx ui.Context) string {
 	b.WriteString("\n")
 	switch {
 	case role.ReadErr != nil:
-		b.WriteString(ui.Truncate(st.Warn.Render("  (could not be read: "+ui.Humanize(role.ReadErr)+")"), width))
+		b.WriteString(draw.Cut(st.Warn.Render("  (could not be read: "+ui.Humanize(role.ReadErr)+")"), width))
 		b.WriteString("\n")
 	case len(role.Policies) == 0:
 		b.WriteString(st.Dim.Render("  (none)\n"))
 	}
 	for _, p := range role.Policies {
-		b.WriteString(ui.Truncate("  "+ui.Sanitize(p), width))
+		b.WriteString(draw.Cut("  "+draw.Sanitize(p), width))
 		b.WriteString("\n")
 	}
 	b.WriteString(st.Dim.Render("\n  p jumps to that policy on the Policies tab\n"))
@@ -305,13 +307,13 @@ func (m *Model) clampCursors() {
 	m.roleCursor = min(max(m.roleCursor, 0), max(0, len(m.CurrentRoles())-1))
 }
 
-func (m *Model) Legend(ctx ui.Context) (status string, keys []ui.LegendEntry) {
+func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
 	status = fmt.Sprintf("%d auth methods  ·  %d roles", len(m.methods), len(m.CurrentRoles()))
 	if ctx.Focus == ui.FocusDetail {
-		return status, append(ui.ScrollLegend(), ui.Entry("p", "go to policy"), ui.Entry("R", "reload"))
+		return status, append(ui.ScrollLegend(), legend.New("p", "go to policy"), legend.New("R", "reload"))
 	}
 	return status, ui.ListLegend("move",
-		ui.Entry("→/enter", "roles, then detail"), ui.Entry("p", "go to policy"), ui.Entry("R", "reload"))
+		legend.New("→/enter", "roles, then detail"), legend.New("p", "go to policy"), legend.New("R", "reload"))
 }
 
 func (m *Model) Help(ctx ui.Context) ui.HelpSection {
@@ -338,8 +340,9 @@ func (m *Model) Overlay(ui.Context) string { return "" }
 // scroll it.
 func (m *Model) KeyDetail(tea.KeyPressMsg, ui.Context) (tea.Cmd, bool) { return nil, false }
 
-func (m *Model) Captures() bool { return false }
-func (m *Model) Blur()          {}
+func (m *Model) Captures() bool       { return false }
+func (m *Model) ScreenCaptures() bool { return false }
+func (m *Model) Blur()                {}
 
 func (m *Model) CopyRows(ui.Context) []ui.CopyRow {
 	if m.methodCursor < 0 || m.methodCursor >= len(m.methods) {

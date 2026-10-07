@@ -1,8 +1,8 @@
 package secrets
 
 import (
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel/overlay"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
 
@@ -16,29 +16,26 @@ type confirmation struct {
 	// danger renders the modal in the alarming palette.
 	danger bool
 
-	// requireText, when set, must be typed exactly before the action can run.
-	requireText string
-	input       textinput.Model
-
-	// inputLabel names the input and moves it above the lines, drawn as a form
-	// row; preview, when set, is a second row computed from what is typed so
-	// far, labelled previewLabel. A bare "> " prompt said nothing about either.
-	inputLabel   string
-	previewLabel string
-	preview      func(typed string) string
-
-	// confirmLabel overrides the default "[y] confirm" hint.
-	confirmLabel string
-
-	// capture routes every keystroke to the input even when the modal is not a
-	// dangerous one, for modals that ask for free text such as a new path.
-	capture bool
+	// prompt, when set, is text the user types: a name, or the path segment a
+	// dangerous action requires. It takes every key but enter and esc, and
+	// draws the whole modal; title and lines above say the same, for tests.
+	prompt *overlay.Prompt
 
 	// onConfirm is dispatched when the user accepts, onCancel when they escape a
 	// modal returning elsewhere. Messages and not callbacks: a callback updates
 	// outside the loop, and clearing the modal first left its input nil.
 	onConfirm tea.Msg
 	onCancel  tea.Msg
+}
+
+// ask opens c over what is on screen. A modal opened from another keeps the
+// first one's screen underneath.
+func (m *Model) ask(c *confirmation) {
+	under := m.currentMode()
+	if open, ok := under.(confirming); ok {
+		under = open.under
+	}
+	m.mode = confirming{confirmation: c, under: under}
 }
 
 // newConfirm builds a y/n confirmation.
@@ -48,40 +45,37 @@ func newConfirm(title string, lines []string, onConfirm tea.Msg) *confirmation {
 
 // newDangerConfirm builds a confirmation that must be typed out. require is the
 // text the user has to reproduce, normally the last segment of the path.
-func newDangerConfirm(title string, lines []string, require string, onConfirm tea.Msg) *confirmation {
+func (m *Model) newDangerConfirm(title string, lines []string, require string, onConfirm tea.Msg) *confirmation {
 	in := ui.NewInput()
 	in.Prompt = "> "
-	in.Placeholder = require
-	in.Focus()
+	danger := m.st.Modal.BorderForeground(m.st.Danger.GetForeground())
+	p := overlay.NewPrompt(title, nil, danger, m.st.Hint()).
+		WithInput(in).WithLines(lines...).WithRequire(require)
 
-	return &confirmation{
-		title:       title,
-		lines:       lines,
-		danger:      true,
-		requireText: require,
-		input:       in,
-		onConfirm:   onConfirm,
-	}
+	return &confirmation{title: title, lines: lines, danger: true, prompt: &p, onConfirm: onConfirm}
 }
 
 // satisfied reports whether the confirmation may run.
-func (c *confirmation) satisfied() bool {
-	if c.requireText == "" {
-		return true
-	}
-	return c.input.Value() == c.requireText
-}
+func (c *confirmation) satisfied() bool { return c.prompt == nil || c.prompt.Accepts() }
 
 // needsInput reports whether the modal is capturing keystrokes.
-func (c *confirmation) needsInput() bool { return c.requireText != "" }
+func (c *confirmation) needsInput() bool { return c.prompt != nil }
 
 // accepted is the message to dispatch, handing over the text the modal captured
 // to whichever message asked for it.
 func (c *confirmation) accepted() tea.Msg {
-	if taker, ok := c.onConfirm.(inputTaker); ok {
-		return taker.withInput(c.input.Value())
+	if taker, ok := c.onConfirm.(inputTaker); ok && c.prompt != nil {
+		return taker.withInput(c.prompt.Value())
 	}
 	return c.onConfirm
+}
+
+// typeInto hands a key or a paste to the prompt.
+func (c *confirmation) typeInto(msg tea.Msg) tea.Cmd {
+	updated, cmd := c.prompt.Update(msg)
+	p := updated.(overlay.Prompt)
+	c.prompt = &p
+	return cmd
 }
 
 // inputTaker is a confirmation message that needs the text the user typed. It
@@ -172,7 +166,7 @@ func (m *Model) keyConfirm(c *confirmation, msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	case "y", "Y":
 		// A typed confirmation must not be satisfiable by a single key.
-		if !c.needsInput() && !c.capture {
+		if !c.needsInput() {
 			accepted := c.accepted()
 			m.mode = browsing{}
 			return dispatch(accepted)
@@ -180,16 +174,14 @@ func (m *Model) keyConfirm(c *confirmation, msg tea.KeyPressMsg) tea.Cmd {
 	case "n", "N":
 		// The same way out as esc. The modal offers them as one hint, so a
 		// modal that carries a way back has to honour both.
-		if !c.needsInput() && !c.capture {
+		if !c.needsInput() {
 			m.mode = browsing{}
 			return dispatch(c.onCancel)
 		}
 	}
 
-	if c.needsInput() || c.capture {
-		var cmd tea.Cmd
-		c.input, cmd = c.input.Update(msg)
-		return cmd
+	if c.needsInput() {
+		return c.typeInto(msg)
 	}
 	return nil
 }

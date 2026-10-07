@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/lucasassuncao/bezel/bezeltest"
 )
 
 // Moving between sibling secrets fires three reads that answer one at a time,
@@ -24,7 +26,7 @@ func TestThePaneShowsOneWholeSecretInEveryFrame(t *testing.T) {
 
 	// Down to the sibling, then hand over the answers one by one, looking at the
 	// screen after each.
-	cmd := h.m.Key(keyMsg("down"), h.ctx)
+	cmd := h.m.Key(bezeltest.Key("down"), h.ctx)
 
 	frames := []string{h.view()}
 	for _, msg := range h.collect(cmd) {

@@ -227,7 +227,7 @@ func (m *Model) afterFailedWrite(msg writeMsg, path string) tea.Cmd {
 			m.mode = editing{editor: msg.editor}
 			return m.failWith(path + " already exists - press esc and create it under another name")
 		}
-		m.mode = confirming{confirmation: m.casConflictModal(msg.node, msg.editor)}
+		m.ask(m.casConflictModal(msg.node, msg.editor))
 		return nil
 	}
 	// Only a save has an editor: a rollback is a write with nothing behind it,

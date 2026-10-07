@@ -7,6 +7,9 @@ package policies
 import (
 	"context"
 	"fmt"
+	"github.com/lucasassuncao/bezel/draw"
+	"github.com/lucasassuncao/bezel/layout"
+	"github.com/lucasassuncao/bezel/legend"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -192,14 +195,14 @@ func (m *Model) RenderList(width, height int, ctx ui.Context) string {
 			"no policies this token can read",
 			"listing policies needs read on sys/policy")
 	}
-	start := ui.ScrollStart(m.cursor, len(m.names), height)
+	start := layout.ScrollStart(m.cursor, len(m.names), height)
 	var b strings.Builder
 	for i := start; i < len(m.names) && i < start+height; i++ {
 		cursor := "  "
 		if i == m.cursor {
 			cursor = st.Cursor.Render("● ")
 		}
-		b.WriteString(ui.Truncate(cursor+ui.Sanitize(m.names[i]), width))
+		b.WriteString(draw.Cut(cursor+draw.Sanitize(m.names[i]), width))
 		b.WriteString("\n")
 	}
 	return b.String()
@@ -220,9 +223,9 @@ func (m *Model) RenderDetail(width int, ctx ui.Context) string {
 	// survive and every other control character does not: a policy is where a
 	// bidirectional override would pay off best, since it is read to be believed.
 	var b strings.Builder
-	safe := strings.Join(ui.SanitizeLines(m.hcl), "\n")
+	safe := strings.Join(draw.SanitizeLines(m.hcl), "\n")
 	for _, line := range strings.Split(highlight(st, safe), "\n") {
-		b.WriteString(ui.Truncate(line, width))
+		b.WriteString(draw.Cut(line, width))
 		b.WriteString("\n")
 	}
 	return b.String()
@@ -271,13 +274,13 @@ func (m *Model) CopyDoc() tea.Cmd {
 	return ui.Emit(ui.CopyMsg{Op: "copy policy", What: "policy copied", Text: m.hcl})
 }
 
-func (m *Model) Legend(ctx ui.Context) (status string, keys []ui.LegendEntry) {
+func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
 	status = fmt.Sprintf("%d policies", len(m.names))
 	if ctx.Focus == ui.FocusDetail {
-		return status, append(ui.ScrollLegend(), ui.Entry("y", "copy HCL"), ui.Entry("R", "reload"))
+		return status, append(ui.ScrollLegend(), legend.New("y", "copy HCL"), legend.New("R", "reload"))
 	}
 	return status, ui.ListLegend("move",
-		ui.Entry("→/enter", "read"), ui.Entry("y", "copy HCL"), ui.Entry("R", "reload"))
+		legend.New("→/enter", "read"), legend.New("y", "copy HCL"), legend.New("R", "reload"))
 }
 
 func (m *Model) Help(ctx ui.Context) ui.HelpSection {
@@ -302,8 +305,9 @@ func (m *Model) Overlay(ui.Context) string { return "" }
 // KeyDetail takes nothing: the pane holds a document, so the arrows scroll it.
 func (m *Model) KeyDetail(tea.KeyPressMsg, ui.Context) (tea.Cmd, bool) { return nil, false }
 
-func (m *Model) Captures() bool { return false }
-func (m *Model) Blur()          {}
+func (m *Model) Captures() bool       { return false }
+func (m *Model) ScreenCaptures() bool { return false }
+func (m *Model) Blur()                {}
 
 func (m *Model) CopyRows(ui.Context) []ui.CopyRow {
 	if m.cursor < 0 || m.cursor >= len(m.names) {

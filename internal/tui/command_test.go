@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"errors"
 	"strings"
 	"testing"
 )
@@ -45,28 +44,27 @@ func TestThePaletteIsAlphabetical(t *testing.T) {
 	}
 }
 
-// The slow path teaches the fast one only if the keystrokes are recorded. A
-// command may have no key - an argument-taking one cannot be a keystroke - but
-// then the help panel has to carry it, because the legend only carries keys.
+// A command with no key is reachable from the palette, and only from it: the
+// "?" panel lists keys alone.
 func TestEveryCommandIsReachable(t *testing.T) {
 	h := newHarness(t)
 	h.open("kv/app/prod/db")
 
-	listed := map[string]bool{}
-	for _, row := range h.m.commandSection().Rows {
-		listed[row[0]] = true
-	}
-
 	for _, c := range commands {
-		if c.key != "" {
+		if c.key != "" || !c.scope(h.m) {
 			continue
 		}
-		if !c.scope(h.m) {
-			continue // out of scope here, so this screen is not the one that has to list it
+		// Typed by name: the palette shows only a window of its candidates.
+		h.typeCommand(c.name)
+		if !strings.Contains(h.view(), c.label()) {
+			t.Errorf("%q has no key and the palette does not list it: it is unreachable", c.name)
 		}
-		if !listed[c.label()] {
-			t.Errorf("%q has no key and the help panel does not list it: it is unreachable", c.name)
-		}
+		h.press("esc")
+	}
+
+	h.press("?")
+	if strings.Contains(h.view(), ":goto <path>") {
+		t.Error("the help panel lists a keyless command; it belongs to the palette alone")
 	}
 }
 
@@ -76,26 +74,23 @@ func TestEveryCommandIsReachable(t *testing.T) {
 func TestResolutionPrefersExactOverPrefix(t *testing.T) {
 	h := newHarness(t)
 	h.open("kv/app/prod/db")
+	h.runCommand("copy")
 
-	c, _, err := h.m.resolve("copy")
-	if err != nil {
-		t.Fatalf("resolve(copy): %v", err)
+	if strings.Contains(h.m.banner(), "ambiguous") {
+		t.Fatalf(":copy was ambiguous: %q", h.m.banner())
 	}
-	if c.name != "copy" {
-		t.Errorf("exact name lost to a longer one: got %q", c.name)
+	if got := h.copied(); got == "" || got == "kv/app/prod/db" {
+		t.Errorf("exact name lost to a longer one: copied %q", got)
 	}
 }
 
 func TestResolutionAcceptsAUniquePrefix(t *testing.T) {
 	h := newHarness(t)
 	h.open("kv/app/prod/db")
+	h.runCommand("rev")
 
-	c, _, err := h.m.resolve("rev")
-	if err != nil {
-		t.Fatalf("resolve(rev): %v", err)
-	}
-	if c.name != "reveal" {
-		t.Errorf("rev should be reveal, got %q", c.name)
+	if len(h.m.secretsTab.RevealedKeys()) == 0 {
+		t.Errorf("rev should run reveal: banner is %q", h.m.banner())
 	}
 }
 
@@ -104,17 +99,13 @@ func TestResolutionAcceptsAUniquePrefix(t *testing.T) {
 func TestResolutionRefusesAnAmbiguousPrefix(t *testing.T) {
 	h := newHarness(t)
 	h.open("kv/app/prod/db")
+	h.runCommand("cop")
 
-	_, _, err := h.m.resolve("cop")
-	var amb ambiguousPrefixError
-	if !errors.As(err, &amb) {
-		t.Fatalf("cop should be ambiguous, got %v", err)
+	if h.mode() != "command" {
+		t.Fatalf("an ambiguous prefix ran something: mode is %q", h.mode())
 	}
-	if len(amb.matches) < 2 {
-		t.Errorf("an ambiguous error should carry its candidates, got %d", len(amb.matches))
-	}
-	if !strings.Contains(amb.Error(), "copy-path") {
-		t.Errorf("the candidates should be named: %q", amb.Error())
+	if !strings.Contains(h.view(), "copy-path") {
+		t.Errorf("the candidates should be named: %q", h.view())
 	}
 }
 
@@ -124,16 +115,14 @@ func TestUnavailableAndUnknownAreDifferentErrors(t *testing.T) {
 	h := newHarness(t)
 
 	// Nothing is selected yet, so reveal has nothing to act on.
-	if _, _, err := h.m.resolve("reveal"); err == nil {
-		t.Fatal("reveal should not resolve with no field selected")
-	} else if unavailable := (unavailableCommandError{}); !errors.As(err, &unavailable) {
-		t.Errorf("a real command out of scope should be unavailable, got %T: %v", err, err)
+	h.runCommand("reveal")
+	if !strings.Contains(h.m.banner(), "reveal is not available here") {
+		t.Errorf("a real command out of scope should be unavailable: %q", h.m.banner())
 	}
 
-	if _, _, err := h.m.resolve("revealx"); err == nil {
-		t.Fatal("revealx should not resolve")
-	} else if unknown := (unknownCommandError{}); !errors.As(err, &unknown) {
-		t.Errorf("a name that is in no table should be unknown, got %T: %v", err, err)
+	h.runCommand("revealx")
+	if !strings.Contains(h.m.banner(), "unknown command: revealx") {
+		t.Errorf("a name that is in no table should be unknown: %q", h.m.banner())
 	}
 }
 
@@ -242,8 +231,8 @@ func TestDiffStaysOfferedSoItCanSayWhatIsMissing(t *testing.T) {
 		t.Fatal("diff should be offered on the version list even with nothing marked")
 	}
 	h.runCommand("diff")
-	if !strings.Contains(h.m.banner, "two versions") {
-		t.Errorf("diff did not say what was missing: banner is %q", h.m.banner)
+	if !strings.Contains(h.m.banner(), "two versions") {
+		t.Errorf("diff did not say what was missing: banner is %q", h.m.banner())
 	}
 }
 
@@ -317,5 +306,21 @@ func TestJumpingToAnotherTabLeavesTheVersionList(t *testing.T) {
 				t.Fatalf("the version list outlived the jump, mode=%s", h.mode())
 			}
 		})
+	}
+}
+
+// The palette lists exactly what the scopes allow, judged on the real panel
+// rather than on a copy of its filter.
+func TestThePaletteAgreesWithTheScopes(t *testing.T) {
+	h := newHarness(t)
+	h.open("kv/app/prod/db")
+	for _, c := range commands {
+		h.typeCommand(c.name)
+		// A candidate row starts with two spaces; the typed line does not.
+		listed := strings.Contains(h.view(), "  "+c.label()+" ")
+		if want := c.scope(h.m); listed != want {
+			t.Errorf("%q: listed %v, scope says %v", c.name, listed, want)
+		}
+		h.press("esc")
 	}
 }

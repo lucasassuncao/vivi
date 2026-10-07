@@ -5,8 +5,8 @@ import (
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
 
-// What the shell does with an answer. Its own are the token and the clipboard;
-// everything else belongs to a tab, and is offered to all four.
+// What the shell does with an answer. Its own is the token (bezel's shell
+// answers the clipboard); everything else belongs to a tab, offered to all four.
 
 func (m *Model) handleData(msg tea.Msg) tea.Cmd {
 	// One request, one answer: the count is settled here rather than at the top
@@ -17,16 +17,6 @@ func (m *Model) handleData(msg tea.Msg) tea.Cmd {
 	}
 
 	switch msg := msg.(type) {
-	case copiedMsg:
-		// The clipboard is not a request against the server, so it is not
-		// counted in m.pending: it answers in a moment or it answers with the
-		// timeout, and either way the loop kept running.
-		if msg.err != nil {
-			return m.fail(msg.op, msg.err)
-		}
-		m.notify(msg.what)
-		return nil
-
 	case tokenMsg:
 		if msg.err != nil {
 			return m.fail("look up token", msg.err)
@@ -43,10 +33,8 @@ func (m *Model) handleData(msg tea.Msg) tea.Cmd {
 		return nil
 	}
 
-	// The tabs, and the shell's own nested input: the command line is a Bubbles
-	// model with a caret that blinks on a message of its own, and a blink that
-	// never arrives is a caret that stalls.
-	return tea.Batch(m.routeToTabs(msg), m.routeToInput(msg))
+	// The tabs: the palette's own messages went to the shell in update.
+	return m.routeToTabs(msg)
 }
 
 // routeToTabs offers a message to every tab. All four and not the first that

@@ -1,12 +1,12 @@
 package tui
 
 import (
+	"github.com/lucasassuncao/bezel/draw"
 	"strings"
 	"testing"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/lucasassuncao/vivi/internal/tui/ui"
 	"github.com/lucasassuncao/vivi/internal/vault"
 )
 
@@ -95,7 +95,7 @@ func TestPolicyDocumentCannotDriveTheTerminal(t *testing.T) {
 // A policy is legitimately multi-line, and neutralising it must not flatten it
 // into one row: a document nobody can read is its own kind of failure.
 func TestPolicyKeepsItsLineBreaks(t *testing.T) {
-	lines := ui.SanitizeLines("path \"kv/*\" {\n  capabilities = [\"read\"]\n}")
+	lines := draw.SanitizeLines("path \"kv/*\" {\n  capabilities = [\"read\"]\n}")
 	if len(lines) != 3 {
 		t.Fatalf("a three-line policy became %d lines: %q", len(lines), lines)
 	}
@@ -106,7 +106,7 @@ func TestPolicyKeepsItsLineBreaks(t *testing.T) {
 
 // A Windows-authored document must not read as one "\r" per line.
 func TestSanitizeLinesTreatsCRLFAsALineEnding(t *testing.T) {
-	lines := ui.SanitizeLines("a\r\nb\r\n")
+	lines := draw.SanitizeLines("a\r\nb\r\n")
 	for _, line := range lines {
 		if strings.Contains(line, `\r`) {
 			t.Errorf("a CRLF line ending was drawn as content: %q", lines)
@@ -137,7 +137,7 @@ func TestTheFooterBannerCannotDriveTheTerminal(t *testing.T) {
 	h.press("enter")
 	h.press("d", "y") // the footer reports the delete by path
 
-	if h.m.banner == "" {
+	if h.m.banner() == "" {
 		t.Fatal("the delete reported nothing, so this proves nothing about the banner")
 	}
 	assertNoPayload(t, "banner", h.view())
@@ -172,7 +172,7 @@ func TestTheTokenPanelCannotDriveTheTerminal(t *testing.T) {
 // Control characters are shown, not dropped: "a\x00b" and "ab" are different
 // secrets and must not look alike.
 func TestSanitizeShowsWhatItNeutralises(t *testing.T) {
-	got := ui.Sanitize("a\x00b")
+	got := draw.Sanitize("a\x00b")
 	if got == "ab" {
 		t.Fatal("a control character was dropped, so two different values now look the same")
 	}
@@ -185,7 +185,7 @@ func TestSanitizeShowsWhatItNeutralises(t *testing.T) {
 // common case free.
 func TestSanitizeLeavesOrdinaryTextAlone(t *testing.T) {
 	for _, s := range []string{"", "hunter2", "kv/app/prod/db", "ação ünïcode 日本語", "a b c"} {
-		if got := ui.Sanitize(s); got != s {
+		if got := draw.Sanitize(s); got != s {
 			t.Errorf("sanitize(%q) = %q, want it unchanged", s, got)
 		}
 	}

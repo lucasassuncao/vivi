@@ -25,7 +25,7 @@ func TestEveryReferenceLineHasACommandThatCopiesIt(t *testing.T) {
 		name := row.CommandName()
 		h.runCommand(name)
 
-		if got := h.m.banner; !strings.Contains(got, "copied: "+row.Text) {
+		if got := h.m.banner(); !strings.Contains(got, "copied: "+row.Text) {
 			t.Errorf(":%s did not report what it copied: banner is %q", name, got)
 		}
 		if got := h.copied(); got != row.Text {

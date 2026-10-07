@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/lucasassuncao/bezel/theme"
 	"strings"
 	"testing"
 
@@ -19,9 +20,9 @@ func TestThemeColoursReachTheRender(t *testing.T) {
 	}
 
 	plain := New(Options{Client: srv, Token: token})
-	themed := New(Options{Client: srv, Token: token, Colors: Colors{
+	themed := New(Options{Client: srv, Token: token, Theme: theme.Theme{Colors: theme.Colors{
 		Accent: "#ff00ff", Danger: "#00ff00",
-	}})
+	}}})
 	for _, m := range []*Model{plain, themed} {
 		m.Update(tea.WindowSizeMsg{Width: 100, Height: 24})
 	}
@@ -35,7 +36,7 @@ func TestThemeColoursReachTheRender(t *testing.T) {
 
 	// Warning is the role no theme supplies, so it must not have been dragged
 	// to the danger colour: deleted and destroyed have to stay distinguishable.
-	if themed.st.Pal.Warn == themed.st.Pal.Danger {
+	if themed.st.Rt.Colors.Warning == themed.st.Rt.Colors.Danger {
 		t.Fatal("an unset warning colour must not fall back to danger")
 	}
 }

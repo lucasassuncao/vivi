@@ -4,30 +4,30 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/lucasassuncao/bezel/theme"
+
 	"github.com/lucasassuncao/vivi/internal/app"
-	"github.com/lucasassuncao/vivi/internal/tui"
-	"github.com/lucasassuncao/yedit/theme"
 )
 
 func TestResolveThemeDefaultsToTheBuiltInPalette(t *testing.T) {
-	colors, err := resolveTheme("")
+	th, err := resolveTheme("")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	// The zero value means "use the adaptive palette", which is the only one
 	// that reads on both light and dark terminals.
-	if colors != (tui.Colors{}) {
-		t.Fatalf("expected an empty palette, got %+v", colors)
+	if th != theme.ThemeDefault {
+		t.Fatalf("expected the adaptive default, got %+v", th)
 	}
 }
 
 func TestResolveThemeLoadsANamedTheme(t *testing.T) {
-	colors, err := resolveTheme("grape")
+	th, err := resolveTheme("grape")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if colors.Accent == "" || colors.Selection == "" || colors.Danger == "" {
-		t.Fatalf("theme did not fill the palette: %+v", colors)
+	if c := th.Colors; c.Accent == "" || c.Selection == "" || c.Danger == "" {
+		t.Fatalf("theme did not fill the palette: %+v", c)
 	}
 }
 
@@ -64,7 +64,7 @@ func TestResolveThemeReadsTheEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if fromEnv.Accent == "" {
+	if fromEnv.Colors.Accent == "" {
 		t.Fatal("the environment variable should select a theme")
 	}
 
@@ -78,21 +78,13 @@ func TestResolveThemeReadsTheEnvironment(t *testing.T) {
 	}
 }
 
-// yedit's palette has no warning colour and vivi needs one: a soft-deleted
-// version is recoverable and a destroyed one is not. The mapping leaves that
-// role empty on purpose, for the built-in warning colour to fill.
-func TestThemesLeaveTheWarningColourToTheBuiltInPalette(t *testing.T) {
+// A soft-deleted version is recoverable and a destroyed one is not, so no
+// theme may paint the two alike.
+func TestThemesKeepWarningApartFromDanger(t *testing.T) {
 	for name, th := range theme.All() {
-		if got := paletteOf(th).Warning; got != "" {
-			t.Fatalf("theme %q set a warning colour (%q); nothing maps to it", name, got)
+		if c := theme.ResolveColors(th, true); c.Warning == c.Danger {
+			t.Fatalf("theme %q paints warning and danger alike (%q)", name, c.Warning)
 		}
-	}
-}
-
-func TestThemeNamesAreGrouped(t *testing.T) {
-	listing := themeNames()
-	if !strings.Contains(listing, "Fruit") || !strings.Contains(listing, "grape") {
-		t.Fatalf("the listing should group names by category:\n%s", listing)
 	}
 }
 

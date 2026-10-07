@@ -47,21 +47,19 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 		return tea.Quit
 	}
 
-	// The shell's own modals answer first. The mode carries what its handler
-	// needs, so a handler never asks whether what it operates on exists - only
-	// whether the mode carries anything. A payload-less mode answers no key,
-	// and quitting would be the way out.
-	switch mode := m.mode.(type) {
-	case commanding:
-		if mode.line == nil {
-			break
-		}
-		return m.keyCommand(mode.line, msg)
-	case showingToken:
+	// The shell's own panels answer first: the command line, then whichever
+	// modal is on top of the stack.
+	if m.showingCommands() {
+		var cmd tea.Cmd
+		m.sh, _, cmd = m.sh.Update(msg)
+		return cmd
+	}
+	switch m.sh.TopOverlay().(type) {
+	case tokenOverlay:
 		return m.keyToken(msg)
-	case showingHelp:
+	case helpOverlay:
 		if dismisses(msg) {
-			m.mode = browsing{}
+			m.sh = m.sh.Pop()
 		}
 		return nil
 	}
@@ -96,7 +94,7 @@ func (m *Model) keyToken(msg tea.KeyPressMsg) tea.Cmd {
 		return m.renewToken()
 	}
 	if dismisses(msg) {
-		m.mode = browsing{}
+		m.sh = m.sh.Pop()
 	}
 	return nil
 }
@@ -116,7 +114,7 @@ func (m *Model) keyBrowse(msg tea.KeyPressMsg) tea.Cmd {
 		return tea.Quit
 	case ":":
 		// The commands are the same actions these keys run, listed by name and
-		// with the key printed beside each. See cmdline.
+		// with the key printed beside each. See actions.go.
 		return m.openCmdline()
 	case "?":
 		m.openHelp()

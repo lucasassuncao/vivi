@@ -1,31 +1,36 @@
 package tui
 
 import (
+	"github.com/lucasassuncao/bezel/draw"
 	"strings"
 	"time"
 
 	"github.com/lucasassuncao/vivi/internal/app"
-	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
 
 // The two lines above the panes: which server this is, and which tab is open.
 // The one part of the screen that is the same on every tab, because what it
 // answers is the same everywhere - "where am I, and how long have I got".
 
-// renderHeader draws three lines: what this program is, which server answered,
-// and how long the session has. Each is truncated and never wrapped, so the
-// chrome stays the height layout.go assumes.
+// headerLines is what the shell draws above the tab strip: what this program
+// is, which server answered, how long the session has, and a blank row that
+// keeps the strip from reading as the header's last line. Each is truncated
+// and never wrapped, so the chrome stays the height the shell measured.
 //
 // Within a line the order is still priority: a truncated line loses its right
 // end, so what the next keystroke depends on goes first.
-func (m *Model) renderHeader() string {
-	return strings.Join([]string{
-		ui.Truncate(m.headerIdentity(), m.width),
-		ui.Truncate(m.headerServer(), m.width),
-		ui.Truncate(m.headerSession(), m.width),
-		ui.Truncate(m.headerVaultVersion(), m.width),
-	}, "\n")
+func (m *Model) headerLines() []string {
+	return []string{
+		draw.Cut(m.headerIdentity(), m.width),
+		draw.Cut(m.headerServer(), m.width),
+		draw.Cut(m.headerSession(), m.width),
+		draw.Cut(m.headerVaultVersion(), m.width),
+		"",
+	}
 }
+
+// renderHeader is the header as one block, for the tests that read it.
+func (m *Model) renderHeader() string { return strings.Join(m.headerLines()[:4], "\n") }
 
 // headerIdentity is the program, its version, and the states that change what
 // every key below does. A session that cannot write, or a server that cannot
@@ -119,7 +124,7 @@ func (m *Model) tokenTTLLabel() string {
 		return m.st.BadgeDang.Render(" token expired ")
 	}
 
-	label := "token " + ui.ShortDuration(left)
+	label := "token " + draw.ShortDuration(left)
 	switch app.ClassifyTTL(left) {
 	case app.TTLCritical:
 		return m.st.BadgeDang.Render(" " + label + " ")
@@ -144,16 +149,4 @@ func (m *Model) remainingTTL() time.Duration {
 		return left
 	}
 	return 0
-}
-
-func (m *Model) renderTabs() string {
-	cells := make([]string, 0, len(tabNames))
-	for i, name := range tabNames {
-		if tab(i) == m.tab {
-			cells = append(cells, m.st.TabActive.Render(" "+name+" "))
-		} else {
-			cells = append(cells, m.st.TabIdle.Render(" "+name+" "))
-		}
-	}
-	return ui.Truncate(strings.Join(cells, " "), m.width)
 }

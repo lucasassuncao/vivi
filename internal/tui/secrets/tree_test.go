@@ -19,13 +19,14 @@ func TestCursorSkipsRowsThatAreNotNodes(t *testing.T) {
 	a := &node{kind: kindMount, name: "a", mount: "a"}
 	b := &node{kind: kindMount, name: "b", mount: "b"}
 
-	tr := &tree{visible: []row{
+	tr := &forest{}
+	tr.Nodes = []row{
 		{kind: rowHeader, header: "FIRST"},
 		{kind: rowNode, node: a},
 		{kind: rowSpacer},
 		{kind: rowHeader, header: "SECOND"},
 		{kind: rowNode, node: b},
-	}}
+	}
 
 	tr.moveTo(0)
 	if tr.current() != a {
@@ -42,7 +43,7 @@ func TestCursorSkipsRowsThatAreNotNodes(t *testing.T) {
 		t.Fatal("down at the end must stay on the last node")
 	}
 
-	tr.moveTo(len(tr.visible) - 1)
+	tr.moveTo(len(tr.Nodes) - 1)
 	if tr.current() != b {
 		t.Fatal("end should land on the last node")
 	}
@@ -56,7 +57,7 @@ func TestCursorSkipsRowsThatAreNotNodes(t *testing.T) {
 // One section separates nothing from nothing. With a single group the header is
 // pure furniture, and the engine goes back onto the mount's own row.
 func TestSingleGroupRendersNoHeader(t *testing.T) {
-	tr := &tree{}
+	tr := &forest{}
 	tr.setMounts([]vault.Mount{
 		{Path: "kv/", Type: "kv", KVVersion: vault.KV2},
 		{Path: "other/", Type: "kv", KVVersion: vault.KV2},
@@ -65,7 +66,7 @@ func TestSingleGroupRendersNoHeader(t *testing.T) {
 	if tr.grouped {
 		t.Fatal("a single section must not be grouped")
 	}
-	for i, r := range tr.visible {
+	for i, r := range tr.Nodes {
 		if r.kind != rowNode {
 			t.Fatalf("row %d is furniture in a single-section tree: %+v", i, r)
 		}
@@ -213,7 +214,7 @@ func TestMountsAreLabelledWithTheirEngine(t *testing.T) {
 
 func TestCursorNeverLandsOnAGroupHeader(t *testing.T) {
 	h := newHarness(t)
-	steps := len(h.m.tree.visible) + 2
+	steps := len(h.m.tree.Nodes) + 2
 
 	for i := 0; i < steps; i++ {
 		if h.m.tree.current() == nil {
@@ -332,7 +333,7 @@ func TestNotBrowsableStillSaysSo(t *testing.T) {
 func TestALoadingRowIsTheSameWidthAsAnIdleOne(t *testing.T) {
 	h := newHarness(t)
 	var n *node
-	for _, r := range h.m.tree.visible {
+	for _, r := range h.m.tree.Nodes {
 		if r.node != nil {
 			n = r.node
 			break

@@ -2,6 +2,7 @@ package secrets
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel/legend"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
 
@@ -96,11 +97,22 @@ func (m *Model) KeyDetail(msg tea.KeyPressMsg, ctx ui.Context) (tea.Cmd, bool) {
 // mode switch used to answer by falling through or not.
 func (m *Model) Captures() bool { return !modeIs[browsing](m) }
 
+// ScreenCaptures looks past a confirmation to the screen it opened over.
+func (m *Model) ScreenCaptures() bool {
+	md := m.currentMode()
+	if c, ok := md.(confirming); ok {
+		md = c.under
+	}
+	_, browse := md.(browsing)
+	return md != nil && !browse
+}
+
 // Resize re-lays the one widget that is sized to the terminal rather than
 // measured at render: a text area has to know its width to wrap and its height
 // to scroll, so it cannot wait for the next frame to find out.
 func (m *Model) Resize(ctx ui.Context) {
 	m.adopt(ctx)
+	m.body = ctx.Height
 	if e := m.currentEditor(); e != nil && e.form != nil {
 		e.form.resize(m.width, m.bodyHeight())
 	}
@@ -171,7 +183,7 @@ func (m *Model) Overlay(ctx ui.Context) string {
 	return ""
 }
 
-func (m *Model) Legend(ctx ui.Context) (status string, keys []ui.LegendEntry) {
+func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
 	m.adopt(ctx)
 
 	// The count describes what the left pane is listing. The tree has none: it
@@ -191,37 +203,40 @@ func (m *Model) Legend(ctx ui.Context) (status string, keys []ui.LegendEntry) {
 		// The actions belong here too, since the shell lets them fall through.
 		// r and y name what they act on, and the words differ from the list's:
 		// here the cursor is on a field, there it is on the secret.
-		head := []ui.LegendEntry{ui.Entry("esc/←", "back to list"), ui.Entry("pgup/pgdn", "scroll")}
+		head := []legend.Entry{legend.New("esc/←", "back to list"), legend.New("pgup/pgdn", "scroll")}
 		return status, ui.ListLegend("fields",
 			append(head, m.actions(m.revealFieldLegend(), copyFieldLegend, paneDeleteLegend, true)...)...)
 	}
-	head := append(m.openLegend(), ui.Entry("/", "filter"))
+	head := append(m.openLegend(), legend.New("/", "filter"))
 	return status, ui.ListLegend("move",
-		append(head, m.actions(m.revealSecretLegend(), copySecretLegend, listDeleteLegend, false)...)...)
+		append(head, m.actions(m.revealSecretLegend(), copySecretLegend, m.listDeleteLegend(), false)...)...)
 }
 
 // actions are the keys that act on what the cursor is on, each shown only where
 // it would do something. They are scoped on exactly the predicates the command
 // palette scopes its own entries on, because a legend and a palette that
 // disagree are two lists and only one of them is checked.
-func (m *Model) actions(reveal, take, remove ui.LegendEntry, inPane bool) []ui.LegendEntry {
-	var out []ui.LegendEntry
+func (m *Model) actions(reveal, take, remove legend.Entry, inPane bool) []legend.Entry {
+	var out []legend.Entry
 	if m.HasField() {
 		out = append(out, reveal, take)
 	}
 	if m.HasSecret() {
-		out = append(out, ui.WriteEntry("e", "edit"))
+		out = append(out, legend.New("e", "edit", ui.CapWrite))
 	}
 	// Creating lands in the folder the tree cursor is in, so it belongs to the
 	// list. Offered beside the field keys it read as adding a field.
 	if !inPane && m.CanCreateHere() {
-		out = append(out, ui.WriteEntry("a", "create"))
+		out = append(out, legend.New("a", "create", ui.CapWrite))
 	}
 	if m.HasVersions() {
-		out = append(out, ui.Entry("v", "versions"))
+		out = append(out, legend.New("v", "versions"))
 	}
 	if (inPane && m.HasField()) || (!inPane && m.SelectedSecret()) {
 		out = append(out, remove)
+	}
+	if !inPane && m.SelectedVersioned() {
+		out = append(out, destroySecretLegend)
 	}
 	return out
 }
@@ -236,12 +251,10 @@ func (m *Model) Help(ctx ui.Context) ui.HelpSection {
 			{"enter", "read the marked version"},
 			{"d", "diff two marked versions"},
 			// Each line answers what the key itself does not: what it touches,
-			// and what is left behind. "destroy" and "delete all" sound
-			// interchangeable, and only one takes the secret out of the listing.
+			// and what is left behind.
 			{"b", "rollback: old content back as a new version"},
 			{"u", "undelete: reverse d, the same version returns"},
 			{"D", "destroy: version data erased, secret still listed"},
-			{"M", "delete secret: every version and the metadata, unlisted"},
 			{"esc", "back"},
 		}}
 	}
@@ -266,6 +279,7 @@ func (m *Model) Help(ctx ui.Context) ui.HelpSection {
 		{"y", "copy the whole secret as JSON, without showing it"},
 		{"e", "edit   ·   a create secret"},
 		{"v", "version list"},
-		{"d", "delete"},
+		{"d", "soft delete: u in the version list undoes it (KV v1: no undo)"},
+		{"M", "destroy secret: every version and the metadata, unlisted (KV v2)"},
 	}}
 }

@@ -436,7 +436,7 @@ func TestTheCreateModalShowsThePathItWillMake(t *testing.T) {
 
 	view := stripANSI(h.view())
 	t.Logf("\n%s", view)
-	for _, want := range []string{"New secret in kv/app/prod/", "name   name", "path   kv/app/prod/…", "[enter] open the editor"} {
+	for _, want := range []string{"New secret in kv/app/prod/", "name  name", "path  kv/app/prod/…", "[enter] open the editor"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("the create modal does not show %q:\n%s", want, view)
 		}
@@ -446,7 +446,7 @@ func TestTheCreateModalShowsThePathItWillMake(t *testing.T) {
 	}
 
 	h.typeText("team/api")
-	if !strings.Contains(stripANSI(h.view()), "path   kv/app/prod/team/api") {
+	if !strings.Contains(stripANSI(h.view()), "path  kv/app/prod/team/api") {
 		t.Errorf("the path row does not follow what is typed:\n%s", h.view())
 	}
 	h.press("enter")
@@ -889,6 +889,21 @@ func TestAPastedCertificateKeepsItsLines(t *testing.T) {
 	}
 }
 
+// A paste copied on Windows carries CRLF, and the widget breaks a line on each
+// half of it: every line came back followed by an empty one.
+func TestACRLFPasteKeepsOneLinePerLine(t *testing.T) {
+	h := newHarness(t)
+	h.open("kv/app/prod/db")
+	h.press("enter", "e", "a")
+	h.typeText("notes")
+	h.press("enter", "enter")
+	h.paste("one\r\ntwo\r\nthree")
+
+	if got := h.form().value.Value(); got != "one\ntwo\nthree" {
+		t.Fatalf("the paste came in as %q", got)
+	}
+}
+
 // On Windows a paste arrives as keystrokes, newlines as enter. With enter
 // accepting a one-line value, the first pasted line closed the form and the
 // rest fell on the table, where "a" opens a form and "x" removes a field: an
@@ -975,6 +990,26 @@ func TestTheFormHasItsOwnWidthAndDrawsAnArea(t *testing.T) {
 		if !strings.Contains(view, n) {
 			t.Errorf("the area does not show its empty row %q:\n%s", n, view)
 		}
+	}
+}
+
+// The area grows a row per enter. Grown by hand, the widget had already
+// scrolled one row down while it was shorter, and line 1 never came back.
+func TestAGrowingValueKeepsItsFirstLine(t *testing.T) {
+	h := newHarness(t)
+	h.resize(120, 40)
+	h.open("kv/app/prod/db")
+	h.press("enter", "e", "a")
+	h.typeText("hello")
+	h.press("enter", "enter")
+	for range 10 {
+		h.typeText("world")
+		h.press("enter")
+	}
+
+	view := stripANSI(h.view())
+	if !strings.Contains(view, "1 │ world") {
+		t.Fatalf("line 1 scrolled out of an area with room for it:\n%s", view)
 	}
 }
 

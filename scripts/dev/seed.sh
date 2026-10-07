@@ -64,6 +64,18 @@ vault kv put -mount=kv platform/tls/internal-ca \
 MIIBexampleexampleexampleexampleexampleexampleexampleexampleexamp
 -----END CERTIFICATE-----' >/dev/null
 
+# custom_metadata, on the secret worth opening first and on one with a value too
+# long for the pane. Its siblings have none, so the section's absence shows too.
+vault kv metadata put -mount=kv \
+  -custom-metadata=owner=team-db \
+  -custom-metadata=ticket=OPS-1234 \
+  -custom-metadata=rotation=quarterly \
+  app/prod/db >/dev/null
+vault kv metadata put -mount=kv \
+  -custom-metadata=owner=platform \
+  -custom-metadata=purpose='fine-grained token used by the release workflow to push tags and publish GitHub releases' \
+  platform/ci/github >/dev/null
+
 # The subtree the demo token may not read.
 vault kv put -mount=kv restricted/root-credentials username=root password=very-secret >/dev/null
 
@@ -225,7 +237,8 @@ cat <<EOF
   Then run: vivi
 
   Things worth opening:
-    kv/app/prod/db              4 versions, one deleted, one destroyed
+    kv/app/prod/db              4 versions, one deleted, one destroyed, custom metadata
+    kv/platform/ci/github       custom metadata with a value too long for the pane
     kv/platform/tls/internal-ca a multi-line value
     legacy/old/app              KV v1: no history, delete has no undo
     kv/restricted/              denied with the demo token

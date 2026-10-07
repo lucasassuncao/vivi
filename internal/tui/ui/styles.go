@@ -1,22 +1,25 @@
 package ui
 
-import "charm.land/lipgloss/v2"
+import (
+	"image/color"
+
+	"charm.land/lipgloss/v2"
+
+	"github.com/lucasassuncao/bezel/theme"
+)
 
 // Styles is every style the interface draws with, resolved once per session.
 // Passed to a component inside a Context rather than rebuilt by it: a component
 // deciding its own colours is a component a theme cannot reach.
 type Styles struct {
-	Pal Palette
+	// Rt is the bezel theme these styles derive from.
+	Rt theme.Resolved
 
 	Header     lipgloss.Style
 	HeaderDim  lipgloss.Style
 	HeaderLbl  lipgloss.Style
 	TabActive  lipgloss.Style
 	TabIdle    lipgloss.Style
-	PaneTitle  lipgloss.Style
-	TitleIdle  lipgloss.Style
-	BorderOn   lipgloss.Style
-	BorderOff  lipgloss.Style
 	Badge      lipgloss.Style
 	BadgeWarn  lipgloss.Style
 	BadgeDang  lipgloss.Style
@@ -48,26 +51,29 @@ type Styles struct {
 	Changed    lipgloss.Style
 }
 
-func NewStyles(c Colors, isDark bool) Styles {
-	p := resolve(c, isDark)
+// headerLabel colours the header's field labels. Fixed rather than taken from the
+// theme: a palette that recoloured them would have "URL:" competing with the
+// address it introduces.
+var headerLabel = lipgloss.Color("#008b8b")
+
+func NewStyles(t theme.Theme, dark bool) Styles {
+	rt := theme.Resolve(t, dark)
+	c := lipgloss.Color
+	p := struct{ Accent, Selection, Border, Dim, Text, OK, Warn, Danger, OnAccent color.Color }{
+		c(rt.Colors.Accent), c(rt.Colors.Selection), c(rt.Colors.Border), c(rt.Colors.Dim), c(rt.Colors.Text),
+		c(rt.Colors.Success), c(rt.Colors.Warning), c(rt.Colors.Danger), c(rt.Colors.OnAccent),
+	}
 
 	return Styles{
-		Pal: p,
+		Rt: rt,
 
 		Header:    lipgloss.NewStyle().Bold(true).Foreground(p.Accent),
 		HeaderDim: lipgloss.NewStyle().Foreground(p.Dim),
-		HeaderLbl: lipgloss.NewStyle().Bold(true).Foreground(defHeaderLabel),
+		HeaderLbl: lipgloss.NewStyle().Bold(true).Foreground(headerLabel),
 		// A filled block reads as "selected" at a glance, where an underline has
 		// to be looked for.
 		TabActive: lipgloss.NewStyle().Bold(true).Foreground(p.OnAccent).Background(p.Accent),
 		TabIdle:   lipgloss.NewStyle().Foreground(p.Dim),
-
-		// Panel titles carry the focus signal as well as the border does, which
-		// keeps the interface readable without colour.
-		PaneTitle: lipgloss.NewStyle().Bold(true).Foreground(p.OnAccent).Background(p.Selection),
-		TitleIdle: lipgloss.NewStyle().Foreground(p.Dim),
-		BorderOn:  lipgloss.NewStyle().Foreground(p.Accent),
-		BorderOff: lipgloss.NewStyle().Foreground(p.Border),
 
 		Badge:     lipgloss.NewStyle().Bold(true).Foreground(p.OnAccent).Background(p.OK),
 		BadgeWarn: lipgloss.NewStyle().Bold(true).Foreground(p.OnAccent).Background(p.Warn),

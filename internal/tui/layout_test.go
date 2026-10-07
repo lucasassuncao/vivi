@@ -6,8 +6,15 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/lucasassuncao/bezel/draw"
+	"github.com/lucasassuncao/bezel/layout"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
+
+// rects is where the shell placed the three panes this frame.
+func (h *harness) rects() (list, detail, copyPanel layout.Rect) {
+	return h.m.sh.Rect(paneList), h.m.sh.Rect(paneDetail), h.m.sh.Rect(paneCopy)
+}
 
 // The left column is a third of the terminal, but only between a floor that
 // keeps paths readable and a ceiling that stops an ultrawide screen from
@@ -22,12 +29,14 @@ func TestLeftPaneWidthIsClamped(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		left, right := splitWidths(tc.total)
-		if left != tc.wantLeft {
-			t.Errorf("width %d: left pane %d, want %d", tc.total, left, tc.wantLeft)
+		h := newHarness(t)
+		h.m.Update(tea.WindowSizeMsg{Width: tc.total, Height: 40})
+		list, detail, _ := h.rects()
+		if list.W != tc.wantLeft {
+			t.Errorf("width %d: left pane %d, want %d", tc.total, list.W, tc.wantLeft)
 		}
-		if left+right != tc.total {
-			t.Errorf("width %d: panes sum to %d", tc.total, left+right)
+		if list.W+detail.W != tc.total {
+			t.Errorf("width %d: panes sum to %d", tc.total, list.W+detail.W)
 		}
 	}
 }
@@ -41,15 +50,15 @@ func TestTheRightColumnAlwaysFitsItsHeight(t *testing.T) {
 		h.open("kv/app/prod/db")
 
 		body := h.m.bodyHeight()
-		_, detail, copyPanel := h.m.rightColumn(body)
+		_, detail, copyPanel := h.rects()
 
-		if copyPanel > 0 && detail+copyPanel != body {
+		if copyPanel.H > 0 && detail.H+copyPanel.H != body {
 			t.Errorf("height %d: the panels sum to %d, want the body height %d",
-				height, detail+copyPanel, body)
+				height, detail.H+copyPanel.H, body)
 		}
-		if copyPanel > 0 && copyPanel > detail {
+		if copyPanel.H > 0 && copyPanel.H > detail.H {
 			t.Errorf("height %d: the copy panel (%d) outgrew the detail it annotates (%d)",
-				height, copyPanel, detail)
+				height, copyPanel.H, detail.H)
 		}
 	}
 }
@@ -62,15 +71,14 @@ func TestTheCopyPanelKeepsItsShareAsTheCursorMoves(t *testing.T) {
 	h.m.Update(tea.WindowSizeMsg{Width: 120, Height: 44})
 	h.open("kv/app/prod/db")
 
-	body := h.m.bodyHeight()
-	_, onSecret, copyOnSecret := h.m.rightColumn(body)
+	_, onSecret, copyOnSecret := h.rects()
 
 	// A folder has fewer rows to show; the panels must not move for it.
 	h.press("up")
-	_, onFolder, copyOnFolder := h.m.rightColumn(body)
-	if copyOnFolder != copyOnSecret || onFolder != onSecret {
+	_, onFolder, copyOnFolder := h.rects()
+	if copyOnFolder.H != copyOnSecret.H || onFolder.H != onSecret.H {
 		t.Errorf("the split moved with the selection: secret %d/%d, folder %d/%d",
-			onSecret, copyOnSecret, onFolder, copyOnFolder)
+			onSecret.H, copyOnSecret.H, onFolder.H, copyOnFolder.H)
 	}
 
 	// A historical version adds one; likewise.
@@ -78,27 +86,31 @@ func TestTheCopyPanelKeepsItsShareAsTheCursorMoves(t *testing.T) {
 	h.press("V")
 	h.press("down")
 	h.press("enter")
-	_, onHistorical, copyOnHistorical := h.m.rightColumn(body)
-	if copyOnHistorical != copyOnSecret || onHistorical != onSecret {
+	_, onHistorical, copyOnHistorical := h.rects()
+	if copyOnHistorical.H != copyOnSecret.H || onHistorical.H != onSecret.H {
 		t.Errorf("the split moved for a historical version: %d/%d, want %d/%d",
-			onHistorical, copyOnHistorical, onSecret, copyOnSecret)
+			onHistorical.H, copyOnHistorical.H, onSecret.H, copyOnSecret.H)
 	}
 }
 
 // The detail viewport is the top panel now, not the whole column. Sized to the
-// column it would believe it can show rows the copy panel is standing on, and
-// the scroll percentage in the footer would report on a pane that big.
+// column it would believe it can show rows the copy panel is standing on; with
+// the "↓ N more lines" row it fills its own panel exactly.
 func TestTheDetailViewportIsSizedToItsOwnPanel(t *testing.T) {
 	h := newHarness(t)
 	h.m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	h.open("kv/app/prod/db")
 
-	_, detail, copyPanel := h.m.rightColumn(h.m.bodyHeight())
-	if copyPanel == 0 {
+	_, detail, copyPanel := h.rects()
+	if copyPanel.H == 0 {
 		t.Fatal("precondition: this screen should have a copy panel")
 	}
-	if got, want := h.m.detail.Height(), ui.PanelContentHeight(detail); got != want {
-		t.Errorf("the viewport is %d rows, but its panel holds %d", got, want)
+	got := h.m.detail.Height()
+	if h.m.detail.TotalLineCount() > got {
+		got++ // the row "↓ N more lines" stands on
+	}
+	if want := draw.InnerRect(detail).H; got != want {
+		t.Errorf("the viewport and its indicator are %d rows, but the panel holds %d", got, want)
 	}
 }
 
@@ -138,10 +150,11 @@ func TestNoRowsMeansNoPanelAtAnyHeight(t *testing.T) {
 	}
 }
 
-// The two panels sit side by side, so a disagreement about height leaves one
-// border hanging below the other. It happened on Activity: the empty state's
-// hint was wider than the pane, wrapped, and the extra row pushed it down.
-func TestBothPanelsAlwaysAgreeOnHeight(t *testing.T) {
+// The screen is exactly the terminal on every tab at every size: a pane that
+// disagrees with its neighbour about height leaves one border hanging below
+// the other, and a row wider than the terminal wraps and pushes everything
+// down. It happened on Activity: the empty state's hint wrapped.
+func TestTheScreenIsExactlyTheTerminal(t *testing.T) {
 	sizes := []tea.WindowSizeMsg{
 		{Width: 200, Height: 64},
 		{Width: 120, Height: 30},
@@ -155,15 +168,13 @@ func TestBothPanelsAlwaysAgreeOnHeight(t *testing.T) {
 			h.m.Update(size)
 			h.open("kv/app/prod/db")
 			h.press("enter")
-			h.m.tab = tab(index)
+			h.m.setTab(tab(index))
+			h.m.relayout()
 
-			bodyHeight := size.Height - 4 // header, tabs, and the two footer rows
-			body := h.m.renderPanes(bodyHeight)
-
-			lines := strings.Split(body, "\n")
-			if len(lines) != bodyHeight {
-				t.Errorf("%dx%d %s: body is %d rows, want %d",
-					size.Width, size.Height, name, len(lines), bodyHeight)
+			lines := strings.Split(h.view(), "\n")
+			if len(lines) != size.Height {
+				t.Errorf("%dx%d %s: screen is %d rows, want %d",
+					size.Width, size.Height, name, len(lines), size.Height)
 			}
 			for i, line := range lines {
 				if width := lineWidth(line); width != size.Width {
@@ -176,35 +187,23 @@ func TestBothPanelsAlwaysAgreeOnHeight(t *testing.T) {
 	}
 }
 
-// The layout sizes the body without measuring a render, sound only while the
-// chrome is as tall as it says. The footer answers for itself, since the legend
-// may take a second line, so its answer must match what it draws at any width.
+// The shell sizes the body without measuring a render, sound only while the
+// chrome is as tall as it says: whatever the legend folds to, the screen never
+// outgrows the terminal.
 func TestChromeIsTheHeightTheLayoutAssumes(t *testing.T) {
 	h := newHarness(t)
 	h.open("kv/app/prod/db")
 
 	for _, width := range []int{40, 60, 80, 100, 160, 220} {
 		h.m.Update(tea.WindowSizeMsg{Width: width, Height: 30})
-
-		if got := lipgloss.Height(h.m.renderFooter()); got != h.m.footerRows() {
-			t.Errorf("width %d: footer draws %d lines, the layout was told %d",
-				width, got, h.m.footerRows())
-		}
-		if got := lipgloss.Height(h.view()); got > 30 {
+		if got := lipgloss.Height(h.view()); got != 30 {
 			t.Errorf("width %d: the screen is %d lines in a 30-line terminal", width, got)
 		}
 	}
 
 	h.m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
-
-	if got := lipgloss.Height(h.m.renderHeader()); got != headerHeight {
-		t.Errorf("header is %d lines, layout assumes %d", got, headerHeight)
-	}
-	if got := lipgloss.Height(h.m.renderTabs()); got != tabsHeight {
-		t.Errorf("tab strip is %d lines, layout assumes %d", got, tabsHeight)
-	}
-	if got := lipgloss.Height(h.view()); got > 30 {
-		t.Errorf("the screen is %d lines in a 30-line terminal", got)
+	if got := lipgloss.Height(h.m.renderHeader()); got != 4 {
+		t.Errorf("header is %d lines, want 4", got)
 	}
 }
 
@@ -252,26 +251,26 @@ func TestTheCopyPanelGivesUpOnANarrowColumn(t *testing.T) {
 		want  bool
 	}{
 		{80, false}, // the column holds 56 columns: one short of the widest line
-		{92, true},  // the first width where every command reads whole
+		{94, true},  // the first width where every command reads whole
 		{120, true}, // and anything above it
 	} {
 		h.m.Update(tea.WindowSizeMsg{Width: tc.width, Height: 40})
+		h.m.relayout()
 
-		_, _, copyHeight := h.m.rightColumn(h.m.bodyHeight())
-		if got := copyHeight > 0; got != tc.want {
+		_, detail, copyPanel := h.rects()
+		if got := copyPanel.H > 0; got != tc.want {
 			t.Errorf("width %d: copy panel present = %v, want %v (height %d)",
-				tc.width, got, tc.want, copyHeight)
+				tc.width, got, tc.want, copyPanel.H)
 		}
 
 		// Whatever the panel does, the column is spent: the detail takes back
 		// exactly what the reference gave up.
-		detailHeight := h.m.bodyHeight() - copyHeight
-		if _, d, _ := h.m.rightColumn(h.m.bodyHeight()); d != detailHeight {
-			t.Errorf("width %d: detail %d, want %d - the column does not add up",
-				tc.width, d, detailHeight)
+		if detail.H+copyPanel.H != h.m.bodyHeight() {
+			t.Errorf("width %d: detail %d + copy %d, want the body %d - the column does not add up",
+				tc.width, detail.H, copyPanel.H, h.m.bodyHeight())
 		}
 
-		if copyHeight == 0 && strings.Contains(h.view(), copyPanelTitle) {
+		if copyPanel.H == 0 && strings.Contains(h.view(), copyPanelTitle) {
 			t.Errorf("width %d: the panel is gone from the layout but still on screen", tc.width)
 		}
 	}
@@ -307,6 +306,13 @@ func TestATallValueScrollsInsideTheFormAt80x24(t *testing.T) {
 	}
 	if got := strings.Count(view, "\n") + 1; got > 24 {
 		t.Errorf("the screen is %d rows tall, the terminal is 24", got)
+	}
+
+	// A key's context carries the terminal's height, not the body's; sized from
+	// that, the next keystroke grew the area past the screen.
+	h.typeText("x")
+	if view := h.view(); strings.Contains(view, "more lines, resize") {
+		t.Errorf("typing after the paste overflowed the form:\n%s", view)
 	}
 }
 

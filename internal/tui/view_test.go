@@ -1,10 +1,12 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel/shell"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
 
@@ -124,8 +126,8 @@ func TestLongDetailContentIsClippedAndScrollable(t *testing.T) {
 	if lines := strings.Split(view, "\n"); len(lines) > 24 {
 		t.Fatalf("a long policy overflowed the screen: %d lines", len(lines))
 	}
-	if !strings.Contains(view, "detail 0%") {
-		t.Fatal("the footer must say where in the document the pane is")
+	if !strings.Contains(view, "more lines") {
+		t.Fatal("the pane must say how much of the document is below it")
 	}
 
 	// The rest has to be reachable, or the pane is just hiding data. Scrolling
@@ -251,5 +253,49 @@ func TestATerminalBelowTheMinimumSaysSo(t *testing.T) {
 	h.m.Update(tea.WindowSizeMsg{Width: minTerminalWidth, Height: minTerminalHeight})
 	if strings.Contains(stripANSI(h.view()), "too small") {
 		t.Errorf("the declared minimum should draw the app:\n%s", h.view())
+	}
+}
+
+// The banner starts at the left edge, in line with the legend under it.
+func TestTheBannerIsFlushLeft(t *testing.T) {
+	h := newHarness(t)
+	h.m.notify("copied: kv/app")
+	for _, line := range strings.Split(h.view(), "\n") {
+		if strings.Contains(line, "copied: kv/app") && !strings.HasPrefix(line, "copied: kv/app") {
+			t.Errorf("the banner is indented: %q", line)
+		}
+	}
+}
+
+// The pane itself says how much is below it, on its last row, and says
+// nothing once at the end; the footer stays the tab's own status.
+func TestTheDetailPaneCountsWhatIsLeft(t *testing.T) {
+	h := newHarness(t)
+	long := strings.Repeat("path \"sys/whatever\" {\n  capabilities = [\"read\"]\n}\n\n", 30)
+	h.m.policiesTab.Restore([]string{"default"}, 0, long)
+	h.m.tab = tabPolicies
+	h.m.Update(tea.WindowSizeMsg{Width: 100, Height: 24})
+
+	pane := h.m.detailView()
+	want := fmt.Sprintf("↓ %d more lines", h.m.detail.TotalLineCount()-h.m.detail.Height())
+	if lines := strings.Split(pane, "\n"); !strings.Contains(lines[len(lines)-1], want) {
+		t.Errorf("the pane's last row should say %q:\n%s", want, pane)
+	}
+	if status := (tabAdapter{m: h.m, t: tabPolicies}).Status(shell.Context{}); strings.Contains(status, "more line") {
+		t.Errorf("the footer still carries the indicator: %q", status)
+	}
+
+	h.press("right", "end")
+	if strings.Contains(h.m.detailView(), "more line") {
+		t.Errorf("at the end the indicator should be gone:\n%s", h.m.detailView())
+	}
+}
+
+func TestOneMoreLineIsSingular(t *testing.T) {
+	if got := moreLines(1); !strings.HasSuffix(got, "↓ 1 more line") {
+		t.Errorf("moreLines(1) = %q", got)
+	}
+	if got := moreLines(7); !strings.HasSuffix(got, "↓ 7 more lines") {
+		t.Errorf("moreLines(7) = %q", got)
 	}
 }

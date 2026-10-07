@@ -97,8 +97,8 @@ func (m *Model) routeToInput(msg tea.Msg) tea.Cmd {
 	case filtering:
 		m.filterInput, cmd = m.filterInput.Update(msg)
 	case confirming:
-		if c := current.confirmation; c != nil && (c.needsInput() || c.capture) {
-			c.input, cmd = c.input.Update(msg)
+		if c := current.confirmation; c != nil && c.needsInput() {
+			cmd = c.typeInto(msg)
 		}
 	case editing:
 		if e := current.editor; e != nil && e.form != nil {
@@ -120,4 +120,10 @@ func (m *Model) focusDetailPane() {
 // and y still act on it. The viewport is the shell's, so this is a request.
 func (m *Model) followFieldCursor() {
 	m.outbox = append(m.outbox, ui.ScrollToLineMsg{Line: fieldsStartLine + m.fieldCursor})
+}
+
+// followVersionCursor is followFieldCursor for the version list, which on a
+// short terminal starts below the fold.
+func (m *Model) followVersionCursor() {
+	m.outbox = append(m.outbox, ui.ScrollToLineMsg{Line: m.versionsStartLine() + m.versionCursor})
 }

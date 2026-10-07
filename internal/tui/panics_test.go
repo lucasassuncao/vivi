@@ -7,72 +7,34 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
 
 // The empty-message and nil-map tests went with the tab whose messages and maps
 // they are. What is left here is the shell's own: the modes it owns, the panel
 // it draws, the clippers, and the crash report.
 
-// A mode is a state plus what it is about, travelling together so no handler
-// checks. Nothing enforces that, and an empty payload crashed whichever
-// renderer drew it next - on every frame after, which cannot be recovered.
-func TestModesWithNoPayloadDoNotEndTheSession(t *testing.T) {
-	modes := []mode{
-		nil,
-		commanding{},
-		showingHelp{},
-		showingToken{},
+// A panel is state plus what it is about, travelling together so no handler
+// checks. An empty command line, or a panel pushed over a model with nothing
+// loaded, must not crash whichever renderer draws it next - on every frame
+// after, which cannot be recovered.
+func TestPanelsWithNoPayloadDoNotEndTheSession(t *testing.T) {
+	arm := []struct {
+		name string
+		set  func(m *Model)
+	}{
+		{"empty command line", func(m *Model) { m.sh = m.sh.SetActions().OpenCommands() }},
+		{"help", func(m *Model) { m.sh = m.sh.Push(helpOverlay{m}) }},
+		{"token", func(m *Model) { m.token = nil; m.sh = m.sh.Push(tokenOverlay{m}) }},
 	}
 
-	for _, md := range modes {
+	for _, tc := range arm {
 		h := newHarness(t)
 		h.open("kv/app/prod/db")
-		h.m.mode = md
+		tc.set(h.m)
 
 		h.view()
 		h.press("down", "enter", "esc", "y", "?")
 		h.view()
-
-		if h.m.mode == nil {
-			t.Errorf("%T left the app with no mode", md)
-		}
-	}
-}
-
-// The cmdline cursor indexes a list the model regenerates every keystroke, and
-// an answer landing while the panel is open can drop commands. A cursor past
-// the end put start past end, and cands[start:end] panics.
-func TestAStaleCommandCursorDoesNotCrashThePanel(t *testing.T) {
-	h := newHarness(t)
-	h.m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
-	h.open("kv/app/prod/db")
-	h.press(":")
-
-	line, ok := h.m.mode.(commanding)
-	if !ok || line.line == nil {
-		t.Fatal("precondition: the command line should be open")
-	}
-	// Further past the end than the window is wide, which is what turned a
-	// stale index into an inverted slice.
-	line.line.cursor = len(commands) + cmdlineRows
-
-	h.view()
-	h.press("tab", "enter")
-	h.view()
-}
-
-// Every panel floors its own height, so nothing reaches these two with a
-// negative one today. They are the last step before a slice bound, though, and
-// lines[:-1] does not clip: it ends the session.
-func TestClippersRefuseNegativeHeights(t *testing.T) {
-	for _, height := range []int{-3, -1, 0} {
-		if got := clipHeight("a\nb\nc", height); got != "" {
-			t.Errorf("clipHeight(height=%d) = %q, want empty", height, got)
-		}
-		if got := ui.FitPanel("a\nb\nc", 10, height); got != "" {
-			t.Errorf("fitPanel(height=%d) = %q, want empty", height, got)
-		}
 	}
 }
 

@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"github.com/lucasassuncao/bezel/bezeltest"
+	"github.com/lucasassuncao/bezel/palette"
+	"github.com/lucasassuncao/bezel/shell"
 	"strings"
 	"sync"
 
@@ -34,7 +37,7 @@ func newHarness(t *testing.T) *harness {
 
 	m := New(Options{Client: srv, Token: token})
 	clip := &fakeClipboard{}
-	m.clip = clip.write
+	m.sh = m.sh.WithClipboard(clip.write)
 	h := &harness{t: t, m: m, server: srv, clip: clip}
 
 	h.m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
@@ -66,6 +69,9 @@ func (h *harness) run(cmd tea.Cmd) {
 			"the tests have not shrunk, or on something that never arrives", settleTimeout)
 	}
 
+	if shell.IsStatusExpiry(msg) {
+		return // a timer, dropped like the ones below
+	}
 	switch msg := msg.(type) {
 	case nil:
 		return
@@ -73,8 +79,6 @@ func (h *harness) run(cmd tea.Cmd) {
 		for _, c := range msg {
 			h.run(c)
 		}
-		return
-	case bannerExpiredMsg:
 		return
 	case clockMsg:
 		// A timer, like the two above: feeding it back would re-arm it and the
@@ -95,7 +99,7 @@ func (h *harness) run(cmd tea.Cmd) {
 func (h *harness) press(keys ...string) {
 	h.t.Helper()
 	for _, k := range keys {
-		_, cmd := h.m.Update(keyMsg(k))
+		_, cmd := h.m.Update(bezeltest.Key(k))
 		h.run(cmd)
 	}
 }
@@ -115,48 +119,6 @@ func (h *harness) paste(s string) {
 	h.t.Helper()
 	_, cmd := h.m.Update(tea.PasteMsg{Content: s})
 	h.run(cmd)
-}
-
-func keyMsg(s string) tea.KeyPressMsg {
-	switch s {
-	case "enter":
-		return tea.KeyPressMsg{Code: tea.KeyEnter}
-	case "esc":
-		return tea.KeyPressMsg{Code: tea.KeyEscape}
-	case " ", "space":
-		// The text matters as much as the code: a text input inserts what the
-		// message carries, so a space with no text types nothing. A terminal
-		// always sends both.
-		return tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
-	case "tab":
-		return tea.KeyPressMsg{Code: tea.KeyTab}
-	case "shift+tab":
-		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
-	case "ctrl+s":
-		return tea.KeyPressMsg{Code: 's', Mod: tea.ModCtrl}
-	case "up":
-		return tea.KeyPressMsg{Code: tea.KeyUp}
-	case "down":
-		return tea.KeyPressMsg{Code: tea.KeyDown}
-	case "home":
-		return tea.KeyPressMsg{Code: tea.KeyHome}
-	case "end":
-		return tea.KeyPressMsg{Code: tea.KeyEnd}
-	case "left":
-		return tea.KeyPressMsg{Code: tea.KeyLeft}
-	case "right":
-		return tea.KeyPressMsg{Code: tea.KeyRight}
-	case "pgup":
-		return tea.KeyPressMsg{Code: tea.KeyPgUp}
-	case "pgdown":
-		return tea.KeyPressMsg{Code: tea.KeyPgDown}
-	case "backspace":
-		return tea.KeyPressMsg{Code: tea.KeyBackspace}
-	default:
-		// A printable keystroke carries both: the code is what the key table
-		// matches on, the text is what a widget inserts.
-		return tea.KeyPressMsg{Code: []rune(s)[0], Text: s}
-	}
 }
 
 // focus puts the cursor on a visible node by full path, loading whatever
@@ -202,7 +164,7 @@ func (h *harness) view() string { return stripANSI(h.m.render()) }
 // the shell's own, for the command line and the two panels, and the tab's. The
 // shell's answers first, because what it has up is drawn over the tab.
 func (h *harness) mode() string {
-	if name := h.m.mode.Name(); name != "browse" {
+	if name := h.m.modeName(); name != "browse" {
 		return name
 	}
 	return h.m.secretsTab.State().Mode
@@ -311,4 +273,13 @@ func (h *harness) copied() string {
 		return ""
 	}
 	return h.clip.written[len(h.clip.written)-1]
+}
+
+// commandLine is what is typed in the open palette, or "" with none open.
+func (h *harness) commandLine() string {
+	p, ok := h.m.sh.TopOverlay().(palette.Model)
+	if !ok {
+		return ""
+	}
+	return p.Value()
 }

@@ -184,6 +184,15 @@ func (s *Server) DestroyVersion(mount, path string, v int) {
 	}
 }
 
+// SetCustomMetadata replaces the custom_metadata of a seeded secret.
+func (s *Server) SetCustomMetadata(mount, path string, custom map[string]any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if rec, ok := s.secrets[key(mount, path)]; ok {
+		rec.metadata.CustomMetadata = maps.Clone(custom)
+	}
+}
+
 // SetToken replaces the token this server reports.
 func (s *Server) SetToken(info *vault.TokenInfo) {
 	s.mu.Lock()
@@ -455,6 +464,7 @@ func (s *Server) Versions(_ context.Context, mount, path string) ([]vault.Versio
 	}
 
 	md := rec.metadata
+	md.CustomMetadata = maps.Clone(md.CustomMetadata)
 	return out, &md, nil
 }
 

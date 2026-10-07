@@ -7,6 +7,8 @@ package secrets
 import (
 	"errors"
 	"fmt"
+	"github.com/lucasassuncao/bezel/draw"
+	"maps"
 	"slices"
 	"strings"
 
@@ -25,6 +27,20 @@ import (
 // version label, blank line, "data" rule. A constant because View may not write
 // to the model, and pinned by TestFieldsStartWhereTheCursorThinksTheyDo.
 const fieldsStartLine = 3
+
+// versionsStartLine is where the first version row lands: after the fields,
+// or the error banner, a blank line and the "versions" rule. Pinned by
+// TestVersionsStartWhereTheCursorThinksTheyDo.
+func (m *Model) versionsStartLine() int {
+	if m.detailErr != nil {
+		banner := 1
+		if errors.Is(m.detailErr, vault.ErrNotFound) && len(m.versions) > 0 {
+			banner++
+		}
+		return banner + 3
+	}
+	return fieldsStartLine + max(1, len(m.sortedKeys())) + 2
+}
 
 // renderSecretDetail is the right pane on the Secrets tab. It is never blank:
 // a directory or a mount describes itself when no secret is selected.
@@ -73,7 +89,8 @@ func (m *Model) renderSecretDetail(width int) string {
 		b.WriteString(m.st.Dim.Render("  (no keys)\n"))
 	}
 	for i, k := range keys {
-		selected := i == m.fieldCursor
+		// The version list, once open, holds the only cursor in the pane.
+		selected := i == m.fieldCursor && !modeIs[choosingVersion](m)
 
 		cursor := "  "
 		if selected {
@@ -88,19 +105,20 @@ func (m *Model) renderSecretDetail(width int) string {
 			glyph = m.st.Warn.Render("◉ ")
 			// Sanitized here and not in valueToString, which also feeds the
 			// editor and the clipboard: those two must see the real bytes.
-			value = ui.Sanitize(valueToString(m.secret.Data[k]))
+			value = draw.Sanitize(valueToString(m.secret.Data[k]))
 		} else {
 			glyph = "  "
 			value = m.st.Masked.Render(ui.MaskedValue)
 		}
 
-		line := cursor + glyph + m.st.Key.Render(fmt.Sprintf("%-16s ", ui.Sanitize(k))) + value
-		b.WriteString(ui.Truncate(line, width))
+		line := cursor + glyph + m.st.Key.Render(fmt.Sprintf("%-16s ", draw.Sanitize(k))) + value
+		b.WriteString(draw.Cut(line, width))
 		b.WriteString("\n")
 	}
 
 	b.WriteString(m.renderVersions(width))
 	b.WriteString(m.renderMetadata(width))
+	b.WriteString(m.renderCustomMetadata(width))
 	b.WriteString(m.renderAccess(n, width))
 	return b.String()
 }
@@ -177,7 +195,7 @@ func (m *Model) renderVersions(width int) string {
 
 		line := fmt.Sprintf("%s[%s] v%-3d %s  %s",
 			cursor, mark, v.Version, v.CreatedTime.Format("2006-01-02 15:04"), state)
-		b.WriteString(ui.Truncate(line, width))
+		b.WriteString(draw.Cut(line, width))
 		b.WriteString("\n")
 	}
 	return b.String()
@@ -204,7 +222,26 @@ func (m *Model) renderMetadata(width int) string {
 		{"updated", m.meta.UpdatedTime.Format("2006-01-02 15:04")},
 	}
 	for _, r := range rows {
-		b.WriteString(ui.Truncate("  "+m.st.Key.Render(fmt.Sprintf("%-16s ", r[0]))+r[1], width))
+		b.WriteString(draw.Cut("  "+m.st.Key.Render(fmt.Sprintf("%-16s ", r[0]))+r[1], width))
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+// renderCustomMetadata shows the secret's custom_metadata, and nothing when it
+// has none. Unlike the data it is not masked: Vault documents it as not secret.
+func (m *Model) renderCustomMetadata(width int) string {
+	if m.meta == nil || len(m.meta.CustomMetadata) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	b.WriteString("\n")
+	b.WriteString(m.st.Heading("custom metadata", width))
+	b.WriteString("\n")
+	for _, k := range slices.Sorted(maps.Keys(m.meta.CustomMetadata)) {
+		key := m.st.Key.Render(fmt.Sprintf("%-16s ", draw.Sanitize(k)))
+		value := draw.Sanitize(valueToString(m.meta.CustomMetadata[k]))
+		b.WriteString(draw.Cut("  "+key+value, width))
 		b.WriteString("\n")
 	}
 	return b.String()
@@ -309,7 +346,7 @@ func (m *Model) renderAccess(n *node, width int) string {
 		rows = append(rows, [2]string{"metadata path", p})
 	}
 	for _, r := range rows {
-		b.WriteString(ui.Truncate("  "+m.st.Key.Render(fmt.Sprintf("%-16s ", r[0]))+ui.Sanitize(r[1]), width))
+		b.WriteString(draw.Cut("  "+m.st.Key.Render(fmt.Sprintf("%-16s ", r[0]))+draw.Sanitize(r[1]), width))
 		b.WriteString("\n")
 	}
 
@@ -351,7 +388,7 @@ func (m *Model) renderGrants(n *node, width int) string {
 
 	var b strings.Builder
 	b.WriteString("\n")
-	b.WriteString(ui.Truncate("  "+m.st.Key.Render("granted by"), width))
+	b.WriteString(draw.Cut("  "+m.st.Key.Render("granted by"), width))
 	b.WriteString("\n")
 
 	// "root" is a policy with no document, so no rule will ever name the path.
@@ -373,16 +410,16 @@ func (m *Model) renderGrants(n *node, width int) string {
 			kind = m.st.Dim.Render("exact")
 		}
 		line := fmt.Sprintf("    %-18s %-28s %s  %s",
-			ui.Sanitize(g.Policy), ui.Sanitize(g.Rule.Path), kind,
+			draw.Sanitize(g.Policy), draw.Sanitize(g.Rule.Path), kind,
 			m.st.Dim.Render(strings.Join(g.Rule.Capabilities, ", ")))
-		b.WriteString(ui.Truncate(line, width))
+		b.WriteString(draw.Cut(line, width))
 		b.WriteString("\n")
 	}
 
 	if len(unreadable) > 0 {
-		b.WriteString(ui.Truncate(m.st.Warn.Render(fmt.Sprintf(
+		b.WriteString(draw.Cut(m.st.Warn.Render(fmt.Sprintf(
 			"    (%d could not be parsed: %s)",
-			len(unreadable), ui.Sanitize(strings.Join(unreadable, ", ")))), width))
+			len(unreadable), draw.Sanitize(strings.Join(unreadable, ", ")))), width))
 		b.WriteString("\n")
 	}
 
@@ -403,7 +440,7 @@ func (m *Model) keySecrets(msg tea.KeyPressMsg) tea.Cmd {
 		m.tree.moveTo(0)
 		return m.onCursorMoved()
 	case "end":
-		m.tree.moveTo(len(m.tree.visible) - 1)
+		m.tree.moveTo(len(m.tree.Nodes) - 1)
 		return m.onCursorMoved()
 	case "right", "enter", " ":
 		// Both mean "further in": expanding a folder, or moving into the pane
@@ -450,6 +487,12 @@ func (m *Model) keySecrets(msg tea.KeyPressMsg) tea.Cmd {
 			m.confirmDeleteField()
 		} else {
 			m.confirmDeleteCurrent()
+		}
+		return nil
+	case "M":
+		// The secret under the tree cursor, like d. The pane has no M.
+		if m.focus != ui.FocusDetail {
+			m.confirmDeleteMetadata()
 		}
 		return nil
 	}
@@ -743,7 +786,7 @@ func (m *Model) confirmDeleteField() {
 		}
 	}
 
-	lines := []string{n.fullPath(), "", m.st.Danger.Render("- " + ui.Sanitize(key)), ""}
+	lines := []string{n.fullPath(), "", m.st.Danger.Render("- " + draw.Sanitize(key)), ""}
 	if app.Warns(app.OpSave, n.kvVersion) {
 		lines = append(lines,
 			m.st.Warn.Render("KV v1 mount: this overwrites the current value."),
@@ -754,8 +797,8 @@ func (m *Model) confirmDeleteField() {
 			"The field stays readable in the versions before it.")
 	}
 
-	m.mode = confirming{confirmation: newConfirm("Remove field", lines,
-		confirmedSaveMsg{node: n, data: data, cas: app.CAS(false, n.kvVersion, base)})}
+	m.ask(newConfirm("Remove field", lines,
+		confirmedSaveMsg{node: n, data: data, cas: app.CAS(false, n.kvVersion, base)}))
 }
 
 func (m *Model) confirmDeleteCurrent() {
@@ -771,7 +814,7 @@ func (m *Model) confirmDeleteCurrent() {
 	// soft delete undelete reverses, on v1 the only copy there is. app grades
 	// it, so the two modals below cannot drift from the policy.
 	if m.gateFor(app.OpDelete, n.kvVersion) == app.GateTyped {
-		m.mode = confirming{confirmation: newDangerConfirm(
+		m.ask(m.newDangerConfirm(
 			"Delete secret (KV v1)",
 			[]string{
 				n.fullPath(),
@@ -782,12 +825,12 @@ func (m *Model) confirmDeleteCurrent() {
 				"Type " + m.st.Danger.Render(app.LastSegment(n.path)) + " to confirm:",
 			},
 			app.LastSegment(n.path),
-			confirmedDeleteMsg{node: n})}
+			confirmedDeleteMsg{node: n}))
 		return
 	}
 
 	target, described := m.browseDeleteTarget(n)
-	m.mode = confirming{confirmation: newConfirm(
+	m.ask(newConfirm(
 		"Delete version",
 		[]string{
 			n.fullPath(),
@@ -796,7 +839,7 @@ func (m *Model) confirmDeleteCurrent() {
 			"",
 			"Soft-delete: the data disappears from reads, and undelete (u) brings it back.",
 		},
-		confirmedDeleteMsg{node: n, versions: target})}
+		confirmedDeleteMsg{node: n, versions: target}))
 }
 
 // browseDeleteTarget is the version "d" deletes outside the version list, and

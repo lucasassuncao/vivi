@@ -9,7 +9,7 @@ import (
 	"github.com/lucasassuncao/vivi/internal/vault"
 )
 
-// The version list, and the four operations that only exist there. It opens
+// The version list, and the three operations that only exist there. It opens
 // over the Secrets tab, which is why the keys have their own handler: inside
 // this list "d" is diff and not delete, and that reversal needs one place.
 
@@ -20,6 +20,7 @@ func (m *Model) openVersions() {
 	}
 	m.mode = choosingVersion{}
 	m.versionCursor = 0
+	m.followVersionCursor()
 }
 
 // keyVersions routes keys while the version list has focus.
@@ -32,12 +33,16 @@ func (m *Model) keyVersions(msg tea.KeyPressMsg) tea.Cmd {
 		return ui.Emit(ui.OpenCmdlineMsg{})
 	case "down":
 		m.versionCursor = clampIndex(m.versionCursor+1, max(0, len(m.versions)-1))
+		m.followVersionCursor()
 	case "up":
 		m.versionCursor = clampIndex(m.versionCursor-1, max(0, len(m.versions)-1))
+		m.followVersionCursor()
 	case "home":
 		m.versionCursor = 0
+		m.followVersionCursor()
 	case "end":
 		m.versionCursor = max(0, len(m.versions)-1)
+		m.followVersionCursor()
 	case "space":
 		// "space" and not " ": v2 names the key rather than the character it
 		// types, which is what the legend and the help panel have always called
@@ -55,8 +60,6 @@ func (m *Model) keyVersions(msg tea.KeyPressMsg) tea.Cmd {
 		m.confirmDestroy()
 	case "b":
 		m.confirmRollback()
-	case "M":
-		m.confirmDeleteMetadata()
 	}
 	return nil
 }
@@ -89,9 +92,9 @@ func (m *Model) targetVersions() []int {
 	return app.TargetVersions(m.marked, m.currentVersionInfo())
 }
 
-// Four operations, none a variant of another. D and M are the confusable pair
-// and both have no undo: LIST reads the metadata, so a destroyed version stays
-// listed and readable as a name, and only M takes the path out.
+// The version operations, none a variant of another. D and M are the confusable
+// pair and both have no undo: LIST reads the metadata, so a destroyed version
+// stays listed, and only M (in the tree) takes the path out.
 func (m *Model) confirmUndelete() tea.Cmd {
 	n, target := m.sel, m.targetVersions()
 	if n == nil || len(target) == 0 {
@@ -112,7 +115,7 @@ func (m *Model) confirmDestroy() {
 	if m.blocks(app.OpDestroy, n.kvVersion, "destroy") {
 		return
 	}
-	m.mode = confirming{confirmation: newDangerConfirm(
+	m.ask(m.newDangerConfirm(
 		"Destroy versions",
 		[]string{
 			n.fullPath(),
@@ -123,28 +126,35 @@ func (m *Model) confirmDestroy() {
 			"Vault has no undo for destroy: undelete will not bring it back.",
 			"",
 			"The secret stays in the listing with an empty version.",
-			"Delete all (M) is what removes the path itself.",
+			"Destroy secret (M, in the tree) is what removes the path itself.",
 			"",
 			"Type " + m.st.Danger.Render(app.LastSegment(n.path)) + " to confirm:",
 		},
 		app.LastSegment(n.path),
-		confirmedDestroyMsg{node: n, versions: target})}
+		confirmedDestroyMsg{node: n, versions: target}))
 }
 
+// confirmDeleteMetadata takes the secret under the tree cursor, as d does. v1
+// keeps no metadata, so there it has nothing to remove and says nothing.
 func (m *Model) confirmDeleteMetadata() {
-	n := m.sel
-	if n == nil {
+	if !m.SelectedVersioned() {
 		return
 	}
+	n := m.tree.current()
 	if m.blocks(app.OpDeleteMetadata, n.kvVersion, "delete metadata") {
 		return
 	}
-	m.mode = confirming{confirmation: newDangerConfirm(
-		"Delete the secret and its whole history",
+	// The history is loaded for the secret in the pane, which may not be this one.
+	count := "every version"
+	if n == m.sel && len(m.versions) > 0 {
+		count = fmt.Sprintf("%d version(s)", len(m.versions))
+	}
+	m.ask(m.newDangerConfirm(
+		"Destroy the secret and its whole history",
 		[]string{
 			n.fullPath(),
 			"",
-			fmt.Sprintf("Destroys %d version(s) and the secret's metadata.", len(m.versions)),
+			"Destroys " + count + " and the secret's metadata.",
 			m.st.Danger.Render("Irreversible: none of this can be recovered."),
 			"",
 			"The path disappears from the listing. Destroy (D) leaves it.",
@@ -152,7 +162,7 @@ func (m *Model) confirmDeleteMetadata() {
 			"Type " + m.st.Danger.Render(app.LastSegment(n.path)) + " to confirm:",
 		},
 		app.LastSegment(n.path),
-		confirmedDeleteMetadataMsg{node: n})}
+		confirmedDeleteMetadataMsg{node: n}))
 }
 
 // confirmRollback writes the old content as a new version. Nothing is lost,
@@ -171,7 +181,7 @@ func (m *Model) confirmRollback() {
 	}
 
 	base := m.currentVersionNumber()
-	m.mode = confirming{confirmation: newConfirm(
+	m.ask(newConfirm(
 		"Rollback",
 		[]string{
 			n.fullPath(),
@@ -179,5 +189,5 @@ func (m *Model) confirmRollback() {
 			fmt.Sprintf("Writes the contents of v%d as a new version (v%d).", v.Version, base+1),
 			"No version is deleted.",
 		},
-		confirmedRollbackMsg{node: n, toVersion: v.Version, base: base})}
+		confirmedRollbackMsg{node: n, toVersion: v.Version, base: base}))
 }

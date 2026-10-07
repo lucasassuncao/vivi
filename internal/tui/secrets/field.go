@@ -3,6 +3,11 @@ package secrets
 import (
 	"encoding/json"
 	"fmt"
+	"math"
+
+	"github.com/lucasassuncao/bezel/draw"
+	"github.com/lucasassuncao/bezel/legend"
+	"github.com/lucasassuncao/bezel/textbox"
 	"strings"
 
 	"charm.land/bubbles/v2/textarea"
@@ -62,8 +67,6 @@ const (
 	// formMinRows is the least the value area shows. Four rows even for a
 	// one-line value, so the area reads as one: a single row is an input.
 	formMinRows = 4
-	// gutterWidth is "%3d │ ": three digits, the rule, a space.
-	gutterWidth = 6
 )
 
 // formInner is the form's content width on this terminal.
@@ -92,7 +95,7 @@ func newEditForm(st ui.Styles, index int, fld field, width, bodyHeight int) *fie
 
 	f := &fieldForm{key: key, value: newValueArea(st), index: index, fixed: true, focus: focusValue}
 	f.typ = typeIndex(fld.orig)
-	f.value.SetValue(fld.value)
+	textbox.SetText(&f.value, fld.value)
 	f.value.CursorEnd()
 	f.value.Focus()
 	f.resize(width, bodyHeight)
@@ -100,32 +103,17 @@ func newEditForm(st ui.Styles, index int, fld field, width, bodyHeight int) *fie
 	return f
 }
 
-// newValueArea is a text area with the widget's own limits taken off: the
-// default caps a value at 400 characters and 99 lines, and a certificate is
-// several thousand characters over fifty. Drawn the way yedit draws its YAML
-// editor: a numbered gutter on every row, and "~" on the rows past the end.
+// newValueArea is bezel's text area, which lifts the widget's 400-character and
+// 99-line caps: a certificate is thousands of characters over fifty lines.
 func newValueArea(st ui.Styles) textarea.Model {
-	ta := textarea.New()
-	ta.CharLimit = 0
-	ta.MaxHeight = 0
-	ta.ShowLineNumbers = false
-	ta.EndOfBufferCharacter = '~'
-	ta.SetPromptFunc(gutterWidth, func(info textarea.PromptInfo) string {
-		return st.Dim.Render(fmt.Sprintf("%3d │ ", info.LineNumber+1))
-	})
-	// The widget's own colours are fixed 256-colour numbers, not the theme's.
-	// The line under the cursor is left unpainted: highlighted, it read as a
-	// selection, and there is nothing to select.
-	plain := lipgloss.NewStyle()
+	ta := textbox.New(st.Shell())
+	// The widget grows itself, which also scrolls back what a shorter area hid.
+	// Without MaxContentHeight, the MaxHeight resize sets would cap the lines.
+	ta.DynamicHeight = true
+	ta.MinHeight = formMinRows
+	ta.MaxContentHeight = math.MaxInt
 	s := ta.Styles()
 	s.Cursor.BlinkSpeed = ui.BlinkSpeed
-	s.Focused.CursorLine = plain
-	s.Focused.Base = plain
-	s.Focused.EndOfBuffer = st.Dim
-	s.Blurred.CursorLine = plain
-	s.Blurred.Base = plain
-	s.Blurred.EndOfBuffer = st.Dim
-	s.Blurred.Text = plain
 	ta.SetStyles(s)
 	return ta
 }
@@ -150,13 +138,13 @@ func (f *fieldForm) orig() any { return typeCycle[f.typ] }
 func (f *fieldForm) resize(width, bodyHeight int) {
 	inner := formInner(width)
 	f.key.SetWidth(max(1, inner-formLabelWidth-1))
-	f.value.SetWidth(max(1, inner-formLabelWidth))
 
 	// The rows around the text area: border, title, key, type, blanks, the
 	// writes line and the hint. Whatever the body has left is the area's cap.
+	// Set before SetWidth, which is what makes the widget refit its height.
 	const chrome = 11
-	capHeight := max(1, bodyHeight-chrome)
-	f.value.SetHeight(min(capHeight, max(formMinRows, f.value.LineCount())))
+	f.value.MaxHeight = max(1, bodyHeight-chrome)
+	f.value.SetWidth(max(1, inner-formLabelWidth))
 }
 
 // validate holds the value against its type and records the answer. A string
@@ -256,7 +244,7 @@ func (f *fieldForm) route(msg tea.Msg) tea.Cmd {
 	case focusKey:
 		f.key, cmd = f.key.Update(msg)
 	case focusValue:
-		f.value, cmd = f.value.Update(msg)
+		f.value, cmd = textbox.Update(f.value, msg)
 	}
 	return cmd
 }
@@ -304,7 +292,7 @@ func (m *Model) applyForm(e *editor, f *fieldForm) bool {
 func (m *Model) renderFieldForm(e *editor, f *fieldForm, height int) string {
 	title := "Add field to " + e.path
 	if f.fixed {
-		title = "Edit " + ui.Sanitize(f.key.Value()) + " in " + e.path
+		title = "Edit " + draw.Sanitize(f.key.Value()) + " in " + e.path
 	}
 
 	inner := formInner(m.width)
@@ -318,7 +306,7 @@ func (m *Model) renderFieldForm(e *editor, f *fieldForm, height int) string {
 	// Padded to one width: a box whose border followed its longest line would
 	// change width as the user typed.
 	for i, line := range lines {
-		lines[i] = ui.Pad(line, inner)
+		lines[i] = draw.Pad(line, inner)
 	}
 	// The box only. The shell floats it over the panes, because the panes are
 	// the shell's and a tab cannot draw over what it cannot see.
@@ -332,7 +320,7 @@ func (m *Model) formRow(label, content string) string {
 
 func (m *Model) formKey(f *fieldForm) string {
 	if f.fixed {
-		return ui.Sanitize(f.key.Value()) + m.st.Dim.Render("   (from the server)")
+		return draw.Sanitize(f.key.Value()) + m.st.Dim.Render("   (from the server)")
 	}
 	return f.key.View()
 }
@@ -396,13 +384,13 @@ func (m *Model) formPreview(f *fieldForm, width int) string {
 	if key == "" {
 		key = "…"
 	}
-	line := ui.Sanitize(fmt.Sprintf("%q: %s", key, encoded))
+	line := draw.Sanitize(fmt.Sprintf("%q: %s", key, encoded))
 	n := f.value.LineCount()
 	if n <= 1 {
 		return line
 	}
 	suffix := fmt.Sprintf("   %d lines · %s", n, byteCount(len(value)))
-	return ui.Truncate(line, max(1, width-lipgloss.Width(suffix))) + m.st.Dim.Render(suffix)
+	return draw.Cut(line, max(1, width-lipgloss.Width(suffix))) + m.st.Dim.Render(suffix)
 }
 
 // byteCount is a size the modal has room for.
@@ -425,16 +413,16 @@ func (m *Model) formHint(f *fieldForm) string {
 		verb = "apply"
 	}
 
-	var keys []ui.LegendEntry
+	var keys []legend.Entry
 	switch {
 	case f.focus == focusKey:
-		keys = []ui.LegendEntry{ui.Entry("enter", "next"), ui.Entry("tab", "move")}
+		keys = []legend.Entry{legend.New("enter", "next"), legend.New("tab", "move")}
 	case f.focus == focusType:
-		keys = []ui.LegendEntry{ui.Entry("←/→", "choose"), ui.Entry("enter", "next"), ui.Entry("tab", "move")}
+		keys = []legend.Entry{legend.New("←/→", "choose"), legend.New("enter", "next"), legend.New("tab", "move")}
 	case f.fixed:
-		keys = []ui.LegendEntry{ui.Entry("enter", "new line")}
+		keys = []legend.Entry{legend.New("enter", "new line")}
 	default:
-		keys = []ui.LegendEntry{ui.Entry("enter", "new line"), ui.Entry("tab", "move")}
+		keys = []legend.Entry{legend.New("enter", "new line"), legend.New("tab", "move")}
 	}
-	return m.st.HintLine(append(keys, ui.Entry("ctrl+s", verb), ui.Entry("esc", "cancel")))
+	return m.st.HintLine(append(keys, legend.New("ctrl+s", verb), legend.New("esc", "cancel")))
 }
