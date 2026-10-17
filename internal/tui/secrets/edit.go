@@ -426,7 +426,7 @@ func (m *Model) beginCreate() {
 		"Next comes the editor for its fields; nothing is written",
 		"until you save them there.",
 	}
-	p := overlay.NewPrompt(title, nil, m.st.Modal, m.st.Hint()).
+	p := overlay.NewPrompt(title, nil, m.st.Shell()).
 		WithInput(in).WithLabel("name").WithLines(lines...).WithAcceptHint("open the editor").
 		WithPreview("path", func(typed string) string {
 			typed = strings.Trim(strings.TrimSpace(typed), "/")

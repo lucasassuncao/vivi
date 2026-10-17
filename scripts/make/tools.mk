@@ -1,12 +1,12 @@
 # Tool versions
-GOLANGCI_LINT_VERSION := v2.13.2
+GOLANGCI_LINT_VERSION := v2.14.0
 GORELEASER_VERSION    := v2.15.2
 GOTESTSUM_VERSION     := v1.13.0
-GOSEC_VERSION         := v2.29.0
+GOSEC_VERSION         := v2.29.1-0.20261012130337-71577268350e
 GOCOBERTURA_VERSION   := latest
 SYFT_VERSION          := v1.51.1
 GRYPE_VERSION         := v0.118.0
-GOVULNCHECK_VERSION   := v1.7.0
+GOVULNCHECK_VERSION   := v1.9.0
 
 # Tools live in ./.gobin (gitignored) so every target runs the pinned version,
 # not whatever PATH has. Each is a file target, installed on first use; bumping

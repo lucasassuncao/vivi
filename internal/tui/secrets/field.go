@@ -112,9 +112,6 @@ func newValueArea(st ui.Styles) textarea.Model {
 	ta.DynamicHeight = true
 	ta.MinHeight = formMinRows
 	ta.MaxContentHeight = math.MaxInt
-	s := ta.Styles()
-	s.Cursor.BlinkSpeed = ui.BlinkSpeed
-	ta.SetStyles(s)
 	return ta
 }
 

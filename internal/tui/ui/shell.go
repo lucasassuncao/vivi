@@ -29,5 +29,7 @@ func (s Styles) Shell() theme.Resolved {
 	r.Dim = s.Dim
 	r.Section = s.Section
 	r.Danger = s.Danger
+	// bezel's own inputs, the palette's and the text area's, blink with vivi's.
+	r.CaretBlink = BlinkSpeed
 	return r
 }

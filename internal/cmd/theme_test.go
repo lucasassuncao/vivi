@@ -16,7 +16,7 @@ func TestResolveThemeDefaultsToTheBuiltInPalette(t *testing.T) {
 	}
 	// The zero value means "use the adaptive palette", which is the only one
 	// that reads on both light and dark terminals.
-	if th != theme.ThemeDefault {
+	if th != theme.Default {
 		t.Fatalf("expected the adaptive default, got %+v", th)
 	}
 }

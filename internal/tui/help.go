@@ -56,7 +56,7 @@ func (m *Model) renderHelp(bodyHeight int) string {
 		}
 		out[i] = overlay.HelpSection{Name: s.Title, Entries: entries}
 	}
-	return overlay.NewHelp("", out, m.st.Modal, m.st.Shell().Legend).View(layout.Rect{W: m.width, H: bodyHeight})
+	return overlay.NewHelp(out, m.st.Shell()).View(layout.Rect{W: m.width, H: bodyHeight})
 }
 
 // contextHelp is the section for where the user is, which every tab answers for

@@ -48,8 +48,7 @@ func newConfirm(title string, lines []string, onConfirm tea.Msg) *confirmation {
 func (m *Model) newDangerConfirm(title string, lines []string, require string, onConfirm tea.Msg) *confirmation {
 	in := ui.NewInput()
 	in.Prompt = "> "
-	danger := m.st.Modal.BorderForeground(m.st.Danger.GetForeground())
-	p := overlay.NewPrompt(title, nil, danger, m.st.Hint()).
+	p := overlay.NewPrompt(title, nil, m.st.Shell()).WithKind(overlay.Danger).
 		WithInput(in).WithLines(lines...).WithRequire(require)
 
 	return &confirmation{title: title, lines: lines, danger: true, prompt: &p, onConfirm: onConfirm}
