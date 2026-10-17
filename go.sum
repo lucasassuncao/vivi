@@ -68,8 +68,8 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/lithammer/fuzzysearch v1.1.8 h1:/HIuJnjHuXS8bKaiTMeeDlW2/AyIWk2brx1V8LFgLN4=
 github.com/lithammer/fuzzysearch v1.1.8/go.mod h1:IdqeyBClc3FFqSzYq/MXESsS4S0FsZ5ajtkr5xPLts4=
-github.com/lucasassuncao/bezel v0.6.0 h1:4EnQxExJmQ/bGGjwiO638Eqs9ne4k6w1FXd+VVOLuAg=
-github.com/lucasassuncao/bezel v0.6.0/go.mod h1:1k56WrYIZSReHvAPvmj5kzpPxBdUM5aLR+Oc4k3a8AY=
+github.com/lucasassuncao/bezel v0.7.0 h1:OhbG2D7gevU0+P3UruCxzjfbainsknwx4K6iC1H4I08=
+github.com/lucasassuncao/bezel v0.7.0/go.mod h1:dDu2bsKY4q7qoVFnN94KYnpIslS0FJICM8BGWU2JsvQ=
 github.com/lucasb-eyer/go-colorful v1.4.1 h1:1EO+WB73+EH8EVbzlrG3KLAfEypQWVHIBqlTf+2hNss=
 github.com/lucasb-eyer/go-colorful v1.4.1/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/mattn/go-colorable v0.1.14 h1:9A9LHSqF/7dyVVX6g0U9cwm9pG3kP9gSzcuIPHPsaIE=
