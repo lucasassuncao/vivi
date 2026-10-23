@@ -1,8 +1,8 @@
 module github.com/lucasassuncao/vivi
 
-go 1.27.0
+go 1.26.4
 
-toolchain go1.27.2
+toolchain go1.26.10
 
 require (
 	charm.land/bubbles/v2 v2.2.1
