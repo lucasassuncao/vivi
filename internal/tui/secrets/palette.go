@@ -141,7 +141,7 @@ func (m *Model) ConfirmDeleteMetadata(ctx ui.Context) tea.Cmd {
 func (m *Model) Filter(pattern string, ctx ui.Context) tea.Cmd {
 	m.adopt(ctx)
 	m.tree.filter = pattern
-	m.filterInput.SetValue(pattern)
+	m.filterInput = m.filterInput.SetValue(pattern)
 	m.tree.reflow()
 	return m.drain(m.onCursorMoved())
 }

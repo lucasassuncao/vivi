@@ -3,12 +3,14 @@ package secrets
 import (
 	"context"
 	"github.com/lucasassuncao/bezel/bezeltest"
+	"github.com/lucasassuncao/bezel/input"
+	"github.com/lucasassuncao/bezel/overlay"
+	"github.com/lucasassuncao/bezel/textbox"
 	"github.com/lucasassuncao/bezel/theme"
 	"strings"
 	"testing"
 	"time"
 
-	"charm.land/bubbles/v2/cursor"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/lucasassuncao/vivi/internal/app"
@@ -118,10 +120,15 @@ func (h *harness) run(cmd tea.Cmd) {
 			h.run(c)
 		}
 		return
-	case cursor.BlinkMsg:
+	case input.BlinkMsg, textbox.BlinkMsg:
 		// The caret re-arms through the model rather than a command, so feeding
 		// it back would loop until the binary is killed.
 		return
+	case overlay.TopMsg:
+		switch msg.Msg.(type) {
+		case input.BlinkMsg, textbox.BlinkMsg:
+			return // a modal's caret, coming back to the modal
+		}
 
 	// What the tab asks of the shell. The shell is this harness now.
 	case ui.BannerMsg:

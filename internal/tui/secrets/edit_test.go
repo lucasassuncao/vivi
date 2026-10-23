@@ -686,8 +686,8 @@ func TestANewKeyTakesTheTypeItIsGiven(t *testing.T) {
 	m := &Model{}
 
 	f := newAddForm(m.st, 100, 30)
-	f.key.SetValue("port")
-	f.value.SetValue("007")
+	f.key = f.key.SetValue("port")
+	f.value = f.value.SetValue("007")
 	if !m.applyForm(e, f) {
 		t.Fatalf("a string is never refused, got %q", f.err)
 	}
@@ -703,16 +703,16 @@ func TestANewKeyTakesTheTypeItIsGiven(t *testing.T) {
 	// form stays open, on the value, with the reason beside it.
 	e = newEditor(&vault.Secret{Data: map[string]any{"host": "db"}}, "app/db", 3, false)
 	f = newAddForm(m.st, 100, 30)
-	f.key.SetValue("port")
+	f.key = f.key.SetValue("port")
 	f.typ = typeIndex(json.Number(""))
-	f.value.SetValue("007")
+	f.value = f.value.SetValue("007")
 	if m.applyForm(e, f) {
 		t.Fatal(`"007" as a number must be refused`)
 	}
 	if !strings.Contains(f.err, "expected a number") || f.focus != focusValue {
 		t.Fatalf("the refusal must name the type and land on the value, got %q on row %d", f.err, f.focus)
 	}
-	f.value.SetValue("8080")
+	f.value = f.value.SetValue("8080")
 	if !m.applyForm(e, f) {
 		t.Fatalf("8080 as a number was refused: %q", f.err)
 	}
@@ -730,14 +730,14 @@ func TestANewKeyTakesTheTypeItIsGiven(t *testing.T) {
 	// The other two types refuse with their own wording, so the reason reads as
 	// the type it is about.
 	f = newAddForm(m.st, 100, 30)
-	f.key.SetValue("flag")
+	f.key = f.key.SetValue("flag")
 	f.typ = typeIndex(false)
-	f.value.SetValue("8080")
+	f.value = f.value.SetValue("8080")
 	if m.applyForm(e, f) || !strings.Contains(f.err, "true or false") {
 		t.Errorf(`"8080" as a bool must be refused with the bool wording, got %q`, f.err)
 	}
 	f.typ = typeIndex(map[string]any{})
-	f.value.SetValue("not json")
+	f.value = f.value.SetValue("not json")
 	if m.applyForm(e, f) || !strings.Contains(f.err, "JSON") {
 		t.Errorf(`"not json" as json must be refused with the JSON wording, got %q`, f.err)
 	}
@@ -750,11 +750,11 @@ func TestTheFormRefusesAnEmptyOrTakenKey(t *testing.T) {
 	m := &Model{}
 
 	f := newAddForm(m.st, 100, 30)
-	f.value.SetValue("x")
+	f.value = f.value.SetValue("x")
 	if m.applyForm(e, f) || !strings.Contains(f.err, "name") || f.focus != focusKey {
 		t.Errorf("an unnamed field must be refused on the key row, got %q on row %d", f.err, f.focus)
 	}
-	f.key.SetValue("host")
+	f.key = f.key.SetValue("host")
 	if m.applyForm(e, f) || !strings.Contains(f.err, "already exists") {
 		t.Errorf("a taken key must be refused, got %q", f.err)
 	}
@@ -889,6 +889,32 @@ func TestAPastedCertificateKeepsItsLines(t *testing.T) {
 	}
 }
 
+// A paste arrives as a message, not a key, and the area must still grow to it
+// at once; and a PEM line, 64 characters, fits a row whole instead of wrapping.
+func TestAPastedPEMGrowsTheAreaWithoutWrapping(t *testing.T) {
+	const line = "MIIBojCCAUigAwIBAgIEeMPduTAKBggqhkjOPQQDAjA3MRkwFwYDVQQKExBFeGFt"
+	pem := "-----BEGIN CERTIFICATE-----\n" + strings.Repeat(line+"\n", 8) + "-----END CERTIFICATE-----"
+
+	h := newHarness(t)
+	h.resize(200, 50)
+	h.open("kv/app/prod/db")
+	h.press("enter", "e", "a")
+	h.typeText("pem")
+	h.press("enter", "enter")
+	h.paste(pem)
+
+	f := h.form()
+	if got := f.value.Rows(); got != 10 {
+		t.Fatalf("ten lines should take ten rows, no wraps, got %d", got)
+	}
+	if got := f.value.Height(); got != 10 {
+		t.Fatalf("the area did not grow with the paste: %d rows tall", got)
+	}
+	if !strings.Contains(stripANSI(h.view()), line) {
+		t.Fatalf("a PEM line is not shown whole on one row:\n%s", h.view())
+	}
+}
+
 // A paste copied on Windows carries CRLF, and the widget breaks a line on each
 // half of it: every line came back followed by an empty one.
 func TestACRLFPasteKeepsOneLinePerLine(t *testing.T) {
@@ -986,10 +1012,8 @@ func TestTheFormHasItsOwnWidthAndDrawsAnArea(t *testing.T) {
 	if !strings.Contains(view, "  1 │ db.prod.internal") {
 		t.Errorf("the value row has no gutter:\n%s", view)
 	}
-	for _, n := range []string{"  2 │ ~", "  3 │ ~", "  4 │ ~"} {
-		if !strings.Contains(view, n) {
-			t.Errorf("the area does not show its empty row %q:\n%s", n, view)
-		}
+	if n := strings.Count(view, "   ~ │"); n != 3 {
+		t.Errorf("the area shows %d empty rows, want 3 under the value:\n%s", n, view)
 	}
 }
 

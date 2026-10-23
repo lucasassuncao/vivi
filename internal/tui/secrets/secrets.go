@@ -12,7 +12,6 @@ import (
 	"slices"
 	"strings"
 
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/lucasassuncao/vivi/internal/app"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
@@ -456,9 +455,10 @@ func (m *Model) keySecrets(msg tea.KeyPressMsg) tea.Cmd {
 		return m.onCursorMoved()
 	case "/":
 		m.mode = filtering{}
-		m.filterInput.SetValue(m.tree.filter)
-		m.filterInput.Focus()
-		return textinput.Blink
+		m.filterInput = m.filterInput.SetValue(m.tree.filter)
+		var cmd tea.Cmd
+		m.filterInput, cmd = m.filterInput.Focus()
+		return cmd
 	case "r":
 		m.revealCurrentField()
 		return nil
@@ -503,13 +503,13 @@ func (m *Model) keyFilter(msg tea.KeyPressMsg) tea.Cmd {
 	switch msg.String() {
 	case "esc":
 		m.tree.filter = ""
-		m.filterInput.SetValue("")
-		m.filterInput.Blur()
+		m.filterInput = m.filterInput.SetValue("")
+		m.filterInput = m.filterInput.Blur()
 		m.mode = browsing{}
 		m.tree.reflow()
 		return m.onCursorMoved()
 	case "enter":
-		m.filterInput.Blur()
+		m.filterInput = m.filterInput.Blur()
 		m.mode = browsing{}
 		return m.onCursorMoved()
 	}

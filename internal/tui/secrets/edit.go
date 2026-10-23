@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"charm.land/bubbles/v2/textarea"
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"github.com/lucasassuncao/vivi/internal/app"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
@@ -407,12 +405,7 @@ func (m *Model) beginCreate() {
 		return
 	}
 
-	in := ui.NewInput()
-	in.Prompt = ""
-	in.Placeholder = "name"
-	// Unset, the widget draws one rune of the placeholder and stops.
-	in.SetWidth(48)
-	in.Focus()
+	in := ui.NewInput(m.st.Shell()).WithPlaceholder("name").WithWidth(48)
 
 	// The folder the name lands in, with one slash to join on: a mount's own
 	// path already ends in one, a directory's does not.
@@ -496,11 +489,11 @@ func (m *Model) keyEdit(e *editor, msg tea.KeyPressMsg) tea.Cmd {
 	case "enter":
 		if f := e.current(); f != nil {
 			e.form = newEditForm(m.st, e.cursor, *f, m.width, m.bodyHeight())
-			return textarea.Blink
+			return e.form.blink()
 		}
 	case "a":
 		e.form = newAddForm(m.st, m.width, m.bodyHeight())
-		return textinput.Blink
+		return e.form.blink()
 	case "x":
 		e.remove()
 	case "ctrl+s":

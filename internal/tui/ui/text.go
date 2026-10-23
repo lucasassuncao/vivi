@@ -5,7 +5,8 @@ import (
 	"slices"
 	"time"
 
-	"charm.land/bubbles/v2/textinput"
+	"github.com/lucasassuncao/bezel/input"
+	"github.com/lucasassuncao/bezel/theme"
 )
 
 // The text every panel is built out of: the mask, the label rows, and the two
@@ -20,16 +21,9 @@ const MaskedValue = "•••••••••"
 // tests can shrink it: a timer does not answer inside the harness's wait.
 var BlinkSpeed = 530 * time.Millisecond
 
-// NewInput builds a text input with this app's caret. The four call sites set
-// their own prompt and placeholder and share the caret, which is the part a
-// test needs: the inputs are built while the app runs, so there is nowhere else.
-func NewInput() textinput.Model {
-	in := textinput.New()
-	s := in.Styles()
-	s.Cursor.BlinkSpeed = BlinkSpeed
-	in.SetStyles(s)
-	return in
-}
+// NewInput builds a text input in th, whose CaretBlink Shell sets from
+// BlinkSpeed. The call sites set their own prompt and placeholder.
+func NewInput(th theme.Resolved) input.Model { return input.New(th) }
 
 // SortedMapKeys is a map's keys in order, for a listing that must not shuffle.
 func SortedMapKeys(m map[string]any) []string {

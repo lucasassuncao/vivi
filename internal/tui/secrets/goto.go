@@ -103,6 +103,9 @@ func (m *Model) routeToInput(msg tea.Msg) tea.Cmd {
 	case editing:
 		if e := current.editor; e != nil && e.form != nil {
 			cmd = e.form.route(msg)
+			// A paste changes the value as typing does: refit the area to it.
+			e.form.resize(m.width, m.bodyHeight())
+			e.form.validate()
 		}
 	}
 	return cmd

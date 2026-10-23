@@ -3,15 +3,13 @@ package secrets
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 
 	"github.com/lucasassuncao/bezel/draw"
+	"github.com/lucasassuncao/bezel/input"
 	"github.com/lucasassuncao/bezel/legend"
 	"github.com/lucasassuncao/bezel/textbox"
 	"strings"
 
-	"charm.land/bubbles/v2/textarea"
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
@@ -34,8 +32,8 @@ const (
 // fieldForm is a value being typed for one field of the editor: the key and the
 // type, both fixed when the field came from the server, and the value.
 type fieldForm struct {
-	key   textinput.Model
-	value textarea.Model
+	key   input.Model
+	value textbox.Model
 	focus formFocus
 
 	// typ indexes typeCycle, which is how choosing a type is choosing the orig
@@ -60,10 +58,10 @@ type fieldForm struct {
 const formLabelWidth = 9
 
 // Form sizing. The form has a width of its own rather than the terminal's:
-// wide enough that a PEM line, 64 characters, fits beside the gutter without
-// wrapping, and no wider, so on a big screen it is a box and not a curtain.
+// wide enough that a PEM line, 64 characters and the caret's cell after it,
+// fits beside the gutter without wrapping, and no wider, so it is a box.
 const (
-	formInnerWidth = 80
+	formInnerWidth = 81
 	// formMinRows is the least the value area shows. Four rows even for a
 	// one-line value, so the area reads as one: a single row is an input.
 	formMinRows = 4
@@ -75,10 +73,7 @@ func formInner(width int) int { return min(formInnerWidth, ui.ModalInner(width))
 // newAddForm starts a field that does not exist yet, a string until told
 // otherwise.
 func newAddForm(st ui.Styles, width, bodyHeight int) *fieldForm {
-	key := ui.NewInput()
-	key.Prompt = ""
-	key.Placeholder = "name"
-	key.Focus()
+	key, _ := ui.NewInput(st.Shell()).WithPlaceholder("name").Focus()
 
 	f := &fieldForm{key: key, value: newValueArea(st), index: -1}
 	f.resize(width, bodyHeight)
@@ -89,15 +84,11 @@ func newAddForm(st ui.Styles, width, bodyHeight int) *fieldForm {
 // and not offered: the type is the server's, and guessing at it is how a
 // digit-only password becomes a number.
 func newEditForm(st ui.Styles, index int, fld field, width, bodyHeight int) *fieldForm {
-	key := ui.NewInput()
-	key.Prompt = ""
-	key.SetValue(fld.key)
+	key := ui.NewInput(st.Shell()).WithValue(fld.key)
 
 	f := &fieldForm{key: key, value: newValueArea(st), index: index, fixed: true, focus: focusValue}
 	f.typ = typeIndex(fld.orig)
-	textbox.SetText(&f.value, fld.value)
-	f.value.CursorEnd()
-	f.value.Focus()
+	f.value, _ = f.value.SetValue(fld.value).Focus()
 	f.resize(width, bodyHeight)
 	f.validate()
 	return f
@@ -105,15 +96,7 @@ func newEditForm(st ui.Styles, index int, fld field, width, bodyHeight int) *fie
 
 // newValueArea is bezel's text area, which lifts the widget's 400-character and
 // 99-line caps: a certificate is thousands of characters over fifty lines.
-func newValueArea(st ui.Styles) textarea.Model {
-	ta := textbox.New(st.Shell())
-	// The widget grows itself, which also scrolls back what a shorter area hid.
-	// Without MaxContentHeight, the MaxHeight resize sets would cap the lines.
-	ta.DynamicHeight = true
-	ta.MinHeight = formMinRows
-	ta.MaxContentHeight = math.MaxInt
-	return ta
-}
+func newValueArea(st ui.Styles) textbox.Model { return textbox.New(st.Shell()) }
 
 // typeIndex is where an orig sits in typeCycle, so the selector can show it.
 func typeIndex(orig any) int {
@@ -134,14 +117,14 @@ func (f *fieldForm) orig() any { return typeCycle[f.typ] }
 // body; past that it scrolls.
 func (f *fieldForm) resize(width, bodyHeight int) {
 	inner := formInner(width)
-	f.key.SetWidth(max(1, inner-formLabelWidth-1))
+	f.key = f.key.SetWidth(max(1, inner-formLabelWidth-1))
 
 	// The rows around the text area: border, title, key, type, blanks, the
-	// writes line and the hint. Whatever the body has left is the area's cap.
-	// Set before SetWidth, which is what makes the widget refit its height.
+	// writes line and the hint. Whatever the body has left is the area's cap;
+	// under it the area grows with its rows, from formMinRows.
 	const chrome = 11
-	f.value.MaxHeight = max(1, bodyHeight-chrome)
-	f.value.SetWidth(max(1, inner-formLabelWidth))
+	f.value = f.value.SetWidth(max(1, inner-formLabelWidth))
+	f.value = f.value.SetHeight(min(max(f.value.Rows(), formMinRows), max(1, bodyHeight-chrome)))
 }
 
 // validate holds the value against its type and records the answer. A string
@@ -193,8 +176,7 @@ func (m *Model) keyForm(e *editor, f *fieldForm, msg tea.KeyPressMsg) (cmd tea.C
 		if msg.String() == "shift+tab" {
 			delta = -1
 		}
-		f.setFocus(formFocus((int(f.focus) + delta + 3) % 3))
-		return textarea.Blink, false
+		return f.setFocus(formFocus((int(f.focus) + delta + 3) % 3)), false
 	}
 
 	switch f.focus {
@@ -211,8 +193,7 @@ func (m *Model) keyForm(e *editor, f *fieldForm, msg tea.KeyPressMsg) (cmd tea.C
 		// arrives as keystrokes - every paste, on Windows - walked it to json.
 		switch msg.String() {
 		case "enter":
-			f.setFocus(focusValue)
-			return textarea.Blink, false
+			return f.setFocus(focusValue), false
 		case "left":
 			f.typ = (f.typ + len(typeCycle) - 1) % len(typeCycle)
 		case "right":
@@ -241,22 +222,32 @@ func (f *fieldForm) route(msg tea.Msg) tea.Cmd {
 	case focusKey:
 		f.key, cmd = f.key.Update(msg)
 	case focusValue:
-		f.value, cmd = textbox.Update(f.value, msg)
+		f.value, cmd = f.value.Update(msg)
 	}
 	return cmd
 }
 
-// setFocus moves the keyboard to a row, so exactly one widget shows a caret.
-func (f *fieldForm) setFocus(to formFocus) {
+// setFocus moves the keyboard to a row, so exactly one widget shows a caret,
+// and returns what starts its blink.
+func (f *fieldForm) setFocus(to formFocus) tea.Cmd {
 	f.focus = to
-	f.key.Blur()
-	f.value.Blur()
+	f.key, f.value = f.key.Blur(), f.value.Blur()
+	var cmd tea.Cmd
 	switch to {
 	case focusKey:
-		f.key.Focus()
+		f.key, cmd = f.key.Focus()
 	case focusValue:
-		f.value.Focus()
+		f.value, cmd = f.value.Focus()
 	}
+	return cmd
+}
+
+// blink keeps the focused widget's caret blinking, for a form just opened.
+func (f *fieldForm) blink() tea.Cmd {
+	if f.focus == focusValue {
+		return f.value.Blink()
+	}
+	return f.key.Blink()
 }
 
 // applyForm puts the form's answer into the editor, or refuses and says why.

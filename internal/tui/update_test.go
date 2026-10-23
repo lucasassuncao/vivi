@@ -4,7 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/lucasassuncao/bezel/bezeltest"
+	"github.com/lucasassuncao/bezel/input"
+	"github.com/lucasassuncao/bezel/textbox"
 )
 
 // What the loop does with an answer, and in particular with a late one: every
@@ -61,32 +65,54 @@ func TestTheClockKeepsTicking(t *testing.T) {
 }
 
 // The filter and the modals are nested components with messages of their own.
-// Their blink timer answers with a cursor message, and if the update loop drops
-// it the timer is never rearmed: the caret stops moving while the user types.
+// Their blink timer answers with a message of its own, and if the update loop
+// drops it the timer is never rearmed: the caret stops moving while the user types.
 func TestNestedInputsKeepTheirCursorBlinking(t *testing.T) {
 	h := newHarness(t)
+	// rearms reports whether the blink a key armed comes back to its field.
+	rearms := func(key string) bool {
+		_, cmd := h.m.Update(bezeltest.Key(key))
+		blink := blinkIn(cmd)
+		if blink == nil {
+			return false
+		}
+		_, next := h.m.Update(blink)
+		return next != nil
+	}
 
-	// textinput.Blink is what the model returns when it focuses an input; the
-	// message it produces has to come back with a command that rearms it.
-	blink := textinput.Blink()
-
-	h.press("/")
-	if _, cmd := h.m.Update(blink); cmd == nil {
+	if !rearms("/") {
 		t.Error("the filter input never received the blink message")
 	}
 	h.press("esc")
 
 	h.focus("kv/")
 	h.press("a") // the create modal captures free text
-	if _, cmd := h.m.Update(blink); cmd == nil {
+	if !rearms("x") {
 		t.Error("the modal input never received the blink message")
 	}
 	h.press("esc")
 
 	h.open("kv/app/prod/db")
-	h.press("e")     // editor
-	h.press("enter") // start typing a value
-	if _, cmd := h.m.Update(blink); cmd == nil {
+	h.press("e")          // editor
+	if !rearms("enter") { // start typing a value
 		t.Error("the editor input never received the blink message")
 	}
+}
+
+// blinkIn runs cmd and finds the caret blink it carries, batched or not.
+func blinkIn(cmd tea.Cmd) tea.Msg {
+	if cmd == nil {
+		return nil
+	}
+	switch msg := cmd().(type) {
+	case tea.BatchMsg:
+		for _, c := range msg {
+			if b := blinkIn(c); b != nil {
+				return b
+			}
+		}
+	case input.BlinkMsg, textbox.BlinkMsg:
+		return msg
+	}
+	return nil
 }

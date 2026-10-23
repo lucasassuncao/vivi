@@ -2,12 +2,14 @@ package tui
 
 import (
 	"github.com/lucasassuncao/bezel/bezeltest"
+	"github.com/lucasassuncao/bezel/input"
+	"github.com/lucasassuncao/bezel/overlay"
 	"github.com/lucasassuncao/bezel/palette"
 	"github.com/lucasassuncao/bezel/shell"
+	"github.com/lucasassuncao/bezel/textbox"
 	"strings"
 	"sync"
 
-	"charm.land/bubbles/v2/cursor"
 	"testing"
 	"time"
 
@@ -84,11 +86,14 @@ func (h *harness) run(cmd tea.Cmd) {
 		// A timer, like the two above: feeding it back would re-arm it and the
 		// harness would follow the chain for as long as the test ran.
 		return
-	case cursor.BlinkMsg:
+	case input.BlinkMsg, textbox.BlinkMsg:
 		// The caret is the one timer re-arming through the model rather than a
 		// command of ours, so the two would loop until the binary is killed.
-		// BlinkMsg is exported and loops; initialBlinkMsg arrives once.
 		return
+	case overlay.TopMsg:
+		if caretBlink(msg.Msg) {
+			return // a modal's caret, coming back to the modal
+		}
 	}
 
 	_, next := h.m.Update(msg)
@@ -282,4 +287,13 @@ func (h *harness) commandLine() string {
 		return ""
 	}
 	return p.Value()
+}
+
+// caretBlink is a text field's blink, which re-arms itself when fed back.
+func caretBlink(msg tea.Msg) bool {
+	switch msg.(type) {
+	case input.BlinkMsg, textbox.BlinkMsg:
+		return true
+	}
+	return false
 }

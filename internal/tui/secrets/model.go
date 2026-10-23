@@ -1,8 +1,9 @@
 package secrets
 
 import (
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel/input"
+	"github.com/lucasassuncao/bezel/theme"
 	"github.com/lucasassuncao/vivi/internal/app"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 	"github.com/lucasassuncao/vivi/internal/vault"
@@ -60,7 +61,7 @@ type Model struct {
 	mode mode
 
 	tree        forest
-	filterInput textinput.Model
+	filterInput input.Model
 
 	// The secret the detail pane is drawing, and its history. This is what is on
 	// screen, not what the cursor is on: moving between secrets leaves it until
@@ -130,9 +131,7 @@ type Model struct {
 }
 
 func New(client vault.Client, req ui.Requester) *Model {
-	filter := ui.NewInput()
-	filter.Prompt = "/"
-	filter.Placeholder = "filter what is already loaded"
+	filter := ui.NewInput(theme.Resolved{}).WithPrompt("/").WithPlaceholder("filter what is already loaded")
 
 	return &Model{
 		req:          req,
@@ -150,6 +149,7 @@ func New(client vault.Client, req ui.Requester) *Model {
 // so the helpers below read the current frame and never the last one.
 func (m *Model) adopt(ctx ui.Context) {
 	m.st, m.focus = ctx.Styles, ctx.Focus
+	m.filterInput = m.filterInput.SetTheme(ctx.Styles.Shell())
 	m.width, m.height = ctx.Width, ctx.Height
 	m.access, m.readOnly = ctx.Access, ctx.ReadOnly
 	m.tokenPolicies = ctx.TokenPolicies

@@ -46,8 +46,7 @@ func newConfirm(title string, lines []string, onConfirm tea.Msg) *confirmation {
 // newDangerConfirm builds a confirmation that must be typed out. require is the
 // text the user has to reproduce, normally the last segment of the path.
 func (m *Model) newDangerConfirm(title string, lines []string, require string, onConfirm tea.Msg) *confirmation {
-	in := ui.NewInput()
-	in.Prompt = "> "
+	in := ui.NewInput(m.st.Shell()).WithPrompt("> ")
 	p := overlay.NewPrompt(title, nil, m.st.Shell()).WithKind(overlay.Danger).
 		WithInput(in).WithLines(lines...).WithRequire(require)
 
