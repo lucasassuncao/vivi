@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/lucasassuncao/bezel/component/input"
+	"github.com/lucasassuncao/bezel/component/textbox"
 	"github.com/lucasassuncao/bezel/draw"
-	"github.com/lucasassuncao/bezel/input"
 	"github.com/lucasassuncao/bezel/legend"
-	"github.com/lucasassuncao/bezel/textbox"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"

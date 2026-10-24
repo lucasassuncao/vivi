@@ -2,7 +2,7 @@ package secrets
 
 import (
 	tea "charm.land/bubbletea/v2"
-	"github.com/lucasassuncao/bezel/input"
+	"github.com/lucasassuncao/bezel/component/input"
 	"github.com/lucasassuncao/bezel/theme"
 	"github.com/lucasassuncao/vivi/internal/app"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"

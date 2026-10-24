@@ -3,9 +3,9 @@ package secrets
 import (
 	"context"
 	"github.com/lucasassuncao/bezel/bezeltest"
-	"github.com/lucasassuncao/bezel/input"
+	"github.com/lucasassuncao/bezel/component/input"
+	"github.com/lucasassuncao/bezel/component/textbox"
 	"github.com/lucasassuncao/bezel/overlay"
-	"github.com/lucasassuncao/bezel/textbox"
 	"github.com/lucasassuncao/bezel/theme"
 	"strings"
 	"testing"

@@ -2,11 +2,11 @@ package tui
 
 import (
 	"github.com/lucasassuncao/bezel/bezeltest"
-	"github.com/lucasassuncao/bezel/input"
+	"github.com/lucasassuncao/bezel/component/input"
+	"github.com/lucasassuncao/bezel/component/textbox"
 	"github.com/lucasassuncao/bezel/overlay"
 	"github.com/lucasassuncao/bezel/palette"
 	"github.com/lucasassuncao/bezel/shell"
-	"github.com/lucasassuncao/bezel/textbox"
 	"strings"
 	"sync"
 

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/lucasassuncao/bezel/input"
+	"github.com/lucasassuncao/bezel/component/input"
 	"github.com/lucasassuncao/bezel/theme"
 )
 

@@ -7,8 +7,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/lucasassuncao/bezel/bezeltest"
-	"github.com/lucasassuncao/bezel/input"
-	"github.com/lucasassuncao/bezel/textbox"
+	"github.com/lucasassuncao/bezel/component/input"
+	"github.com/lucasassuncao/bezel/component/textbox"
 )
 
 // What the loop does with an answer, and in particular with a late one: every

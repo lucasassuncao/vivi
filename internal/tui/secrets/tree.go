@@ -1,9 +1,9 @@
 package secrets
 
 import (
+	"github.com/lucasassuncao/bezel/component/tree"
 	"github.com/lucasassuncao/bezel/draw"
 	"github.com/lucasassuncao/bezel/layout"
-	"github.com/lucasassuncao/bezel/tree"
 	"strings"
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
