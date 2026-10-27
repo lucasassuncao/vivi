@@ -138,6 +138,7 @@ Navigation is arrow keys and `enter`, everywhere. Letters are only ever actions,
 | `/` | fuzzy filter over what is already loaded |
 | `r` | reveal  ·  `y` copy  ·  `v` version list |
 | `e` | edit  ·  `a` create  ·  `d` delete |
+| `c` | hide or show the Command Reference |
 | `?` | every key for where you are |
 
 See [docs/KEYS.md](docs/KEYS.md) for the rest: the detail pane, the editor and how it types a new field, the version list, and why `b`, `u`, `D` and `M` are four different words.

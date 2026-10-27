@@ -29,6 +29,7 @@ func (m *Model) renderHelp(bodyHeight int) string {
 	meta := ui.HelpSection{Title: "Anywhere", Rows: [][2]string{
 		{"tab, 1-4", "switch tab"},
 		{"i", "token information"},
+		{"c", "show or hide the Command Reference"},
 		{"R", "reload what this tab shows"},
 		{"home / end", "top / bottom"},
 		{":", "every command, with its key"},

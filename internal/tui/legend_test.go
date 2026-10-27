@@ -421,15 +421,15 @@ func TestTheLegendPutsTheActionsOnTheSecondRow(t *testing.T) {
 		nav, acts string
 	}{
 		{"a secret", nil,
-			"[tab] change tab  [↑/↓] move  [→/enter] focus detail  [:] commands  [/] filter  [?] help",
+			"[tab] change tab  [↑/↓] move  [→/enter] focus detail  [:] commands  [/] filter  [c] hide reference  [?] help",
 			"[r] reveal secret"},
 		{"the detail pane", []string{"enter"},
-			"[tab] change tab  [↑/↓] fields  [esc/←] back to list  [pgup/pgdn] scroll  [:] commands  [?] help",
+			"[tab] change tab  [↑/↓] fields  [esc/←] back to list  [pgup/pgdn] scroll  [:] commands  [c] hide reference  [?] help",
 			"[r] reveal field"},
 		{"a policy", []string{"2"},
-			"[tab] change tab  [↑/↓] move  [→/enter] read  [:] commands  [?] help", "[y] copy HCL"},
+			"[tab] change tab  [↑/↓] move  [→/enter] read  [:] commands  [c] hide reference  [?] help", "[y] copy HCL"},
 		{"an auth method", []string{"3"},
-			"[tab] change tab  [↑/↓] move  [→/enter] roles, then detail  [:] commands  [?] help", "[p] go to policy"},
+			"[tab] change tab  [↑/↓] move  [→/enter] roles, then detail  [:] commands  [c] hide reference  [?] help", "[p] go to policy"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := newHarness(t)

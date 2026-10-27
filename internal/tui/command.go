@@ -103,6 +103,8 @@ func onVersionList(m *Model) bool {
 // be asked to do. It is grouped by tab for reading, not for display: the palette
 // sorts by name, so where an entry is added here changes nothing.
 var commands = []command{
+	{name: "reference", key: "c", title: "show or hide the Command Reference",
+		scope: func(m *Model) bool { return m.referenceFits() }, run: issue((*Model).toggleReference)},
 	// Secrets.
 	{name: "reveal", key: "r", title: "reveal the secret, or one field from the detail pane",
 		scope: hasField, run: onSecrets((*secrets.Model).RevealCurrentField)},

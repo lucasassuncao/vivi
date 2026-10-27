@@ -99,7 +99,7 @@ What the parent and a tab both have to name lives in `ui`, because it can live i
 | `tab.go` | the `Tab` interface, and the last switch over the tabs, which is the dispatch table itself |
 | `update.go` | what the loop does with an answer: the token is the parent's, everything else is offered to the tabs |
 | `keys.go` | where a keystroke goes: the mode decides, then the tab |
-| `layout.go` | how the terminal is divided, decided without rendering anything |
+| `layout.go` | how the terminal is divided, decided without rendering anything, and the Command Reference sliding away on `c` |
 | `view.go` | the smallest terminal vivi draws into, and the frame |
 | `header.go` | the lines above the panes: which server this is, and how dangerous it is |
 | `legend.go` | the tabs as the shell sees them: their names, their status, their keys |

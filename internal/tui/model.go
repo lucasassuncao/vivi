@@ -11,6 +11,7 @@ import (
 
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel/animation"
 	"github.com/lucasassuncao/bezel/shell"
 	"github.com/lucasassuncao/vivi/internal/app"
 	"github.com/lucasassuncao/vivi/internal/tui/activity"
@@ -128,6 +129,11 @@ type Model struct {
 	// than the terminal would push the pane's own border off screen.
 	detail viewport.Model
 	focus  ui.Focus
+
+	// refHidden is the Command Reference put away with "c", for the session;
+	// refSlide is its height on the way in or out.
+	refHidden bool
+	refSlide  animation.Tween
 
 	// bannerCmds are the expiry timers of banners set during this Update, so
 	// a handler that has no command to return still gets its banner cleared.
@@ -299,6 +305,15 @@ func (m *Model) update(msg tea.Msg) tea.Cmd {
 
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
+
+	case animation.FrameMsg:
+		// The panel's own frames; any other is the shell's, below.
+		if m.refSlide.Active() {
+			var cmd tea.Cmd
+			if m.refSlide, cmd = m.refSlide.Update(msg); cmd != nil || !m.refSlide.Active() {
+				return cmd
+			}
+		}
 	}
 
 	// The shell's own messages: a banner expiring, the palette finishing, a

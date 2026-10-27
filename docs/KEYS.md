@@ -21,6 +21,7 @@ Navigation is arrow keys and `enter`, everywhere. Letters are only ever actions,
 | `p` | on the Auth tab: go to the policy the selected role grants |
 | `R` | reload what this tab is showing |
 | `i` | token information  ·  `n` renew the token, in that panel |
+| `c` | hide the Command Reference and give its rows to the detail, or bring it back |
 | `:` | run any of these by name, listed as you type |
 | `?` | help  ·  `q` quit |
 
@@ -94,6 +95,8 @@ The right column is two panels. The top one is the detail; the `Command Referenc
 The panel takes a fixed share of the column (about a fifth, never less than its six rows and never more than half) rather than the height of whatever it happens to hold. Sized to its contents it moved every time the cursor did, and the detail panel above it resized with it.
 
 It is named for what it holds rather than for a key, and it was not always. The title read `Copy` while `Y` and `C` were the keys that copied the path and the command to the clipboard and showed you neither, so the only way to check what you had was to paste it somewhere. Both keys are gone, and printing the lines instead makes them readable and selectable with the mouse. Nothing in the panel is copied for you: the one key that still copies, `y`, acts on the panel above, so a title promising an action no key there performs had outlived what it described. Each line does have a command that copies it (`:copy-path`, `:copy-read-command` and the rest, generated from whatever the panel is showing) for putting one on the clipboard in one go, which a mouse selection cannot do over ssh.
+
+`c` puts the panel away when the detail needs the rows, sliding it out, and brings it back the same way. It stays away for the rest of the session, on every tab.
 
 The detail panel is the one that scrolls: content longer than the terminal, a policy document or a secret with many keys, scrolls instead of overflowing. Move into the pane with `enter` and drive it there:
 

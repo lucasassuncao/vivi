@@ -121,6 +121,8 @@ func (m *Model) keyBrowse(msg tea.KeyPressMsg) tea.Cmd {
 		return nil
 	case "i":
 		return m.openToken()
+	case "c":
+		return m.toggleReference()
 	case "R":
 		// Here and not in the tab handlers: reloadCurrent already answers for
 		// every tab, and only the secrets one ever called it, so the "R reload"

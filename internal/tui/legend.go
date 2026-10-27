@@ -35,7 +35,7 @@ func (a tabAdapter) Status(shell.Context) string {
 // gets it, and stays out of the palette, which has vivi's own :help.
 func (a tabAdapter) Actions(shell.Context) []shell.Action {
 	m := a.m
-	_, keys := m.tabFor(a.t).Legend(m.uiContext())
+	keys := m.screenKeys(a.t)
 	helps := shell.When(func(shell.Context) bool { return m.helpKey() != "" })
 	var out []shell.Action
 	for _, e := range keys {
@@ -49,8 +49,21 @@ func (a tabAdapter) Actions(shell.Context) []shell.Action {
 // legend is the footer's keys for where the user is, after the read-only
 // filter: what the shell will pack. Kept for the tests that pin the rule.
 func (m *Model) legend() []legend.Entry {
-	_, hs := m.currentTab().Legend(m.uiContext())
-	return legend.Filter(hs, m.can)
+	return legend.Filter(m.screenKeys(m.tab), m.can)
+}
+
+// screenKeys is a tab's keys and, closing the first row before help, the
+// Command Reference's: it acts on the screen, not on what the cursor is on.
+func (m *Model) screenKeys(t tab) []legend.Entry {
+	_, keys := m.tabFor(t).Legend(m.uiContext())
+	if m.tabFor(t).ScreenCaptures() || !m.referenceFits() {
+		return keys
+	}
+	desc := "hide reference"
+	if m.refHidden {
+		desc = "show reference"
+	}
+	return append(keys, legend.New("c", desc))
 }
 
 // legendMaxLines is what the footer will spend on the legend. Three since d and

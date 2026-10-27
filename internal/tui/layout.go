@@ -1,6 +1,10 @@
 package tui
 
 import (
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel/animation"
 	"github.com/lucasassuncao/bezel/draw"
 	"github.com/lucasassuncao/bezel/layout"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
@@ -96,19 +100,54 @@ func (m *Model) layout() layout.Node {
 	return layout.Columns(leftColumn(), right).Collapse(narrowLimit, keep)
 }
 
-// copyPanelHeight is the outer height the reference panel gets, or zero when
+// referenceSlide is how long the Command Reference takes to slide in or out.
+const referenceSlide = 150 * time.Millisecond
+
+// copyPanelHeight is the outer height the reference panel is drawn at: its
+// room, nothing while it is put away, and the slide's height on the way.
+func (m *Model) copyPanelHeight() int {
+	switch {
+	case m.refSlide.Active():
+		return m.refSlide.Cur
+	case m.refHidden:
+		return 0
+	}
+	return m.copyPanelRoom()
+}
+
+// copyPanelRoom is the outer height the reference panel gets, or zero when
 // it has nothing to say or the column is too narrow for what it says: then
 // it is given up whole rather than drawn as truncated commands.
-func (m *Model) copyPanelHeight() int {
-	if m.width < narrowLimit {
+func (m *Model) copyPanelRoom() int {
+	if !m.referenceFits() {
 		return 0
 	}
-	width := draw.InnerRect(m.sh.Rect(paneDetail)).W
-	if width < copyPanelCols {
-		return 0
-	}
-	_, h := splitHeights(m.sh.Body().H, len(m.copyLines(width)))
+	_, h := splitHeights(m.sh.Body().H, len(m.copyRows()))
 	return h
+}
+
+// referenceFits reports that the Command Reference has rows and the column is
+// wide enough for them. Not the height: the legend asks, and the legend is
+// part of what the body's height is measured against.
+func (m *Model) referenceFits() bool {
+	return m.width >= narrowLimit && draw.InnerRect(m.sh.Rect(paneDetail)).W >= copyPanelCols &&
+		len(m.copyRows()) > 0
+}
+
+// toggleReference puts the Command Reference away or brings it back, sliding
+// from the height it is drawn at, so a second press mid-slide turns it round.
+func (m *Model) toggleReference() tea.Cmd {
+	if !m.referenceFits() {
+		return nil
+	}
+	from := m.copyPanelHeight()
+	m.refHidden = !m.refHidden
+	to := 0
+	if !m.refHidden {
+		to = m.copyPanelRoom()
+	}
+	m.refSlide = animation.New(from, to, referenceSlide)
+	return m.refSlide.Tick()
 }
 
 // relayout hands the shell this frame's tree and focus. Called after every

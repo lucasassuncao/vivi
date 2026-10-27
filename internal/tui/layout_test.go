@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/lucasassuncao/bezel/bezeltest"
 	"github.com/lucasassuncao/bezel/draw"
 	"github.com/lucasassuncao/bezel/layout"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
@@ -350,5 +351,54 @@ func TestASecretIsReachableAtEveryWidth(t *testing.T) {
 		if h.m.focus != ui.FocusList {
 			t.Errorf("width %d: esc did not come back out of the secret", width)
 		}
+	}
+}
+
+// "c" puts the Command Reference away for the session, on every tab, and the
+// detail takes its rows; a second "c" brings it back to the same split.
+func TestCPutsTheReferenceAwayAndBringsItBack(t *testing.T) {
+	t.Setenv("BEZEL_NO_MOTION", "1")
+	h := newHarness(t)
+	h.open("kv/app/prod/db")
+	detail := h.m.sh.Rect(paneDetail).H
+	if h.m.sh.Rect(paneCopy).H == 0 || !strings.Contains(stripANSI(h.m.renderLegend(200)), "[c] hide reference") {
+		t.Fatalf("precondition: the reference is up and the legend offers to hide it:\n%s", h.view())
+	}
+
+	h.press("c")
+	if h.m.sh.Rect(paneCopy).H != 0 || strings.Contains(h.view(), copyPanelTitle) {
+		t.Fatalf("c did not put the reference away:\n%s", h.view())
+	}
+	if h.m.sh.Rect(paneDetail).H <= detail {
+		t.Errorf("the detail did not take the reference's rows: %d, was %d", h.m.sh.Rect(paneDetail).H, detail)
+	}
+	if !strings.Contains(stripANSI(h.m.renderLegend(200)), "[c] show reference") {
+		t.Errorf("the legend does not offer it back:\n%s", h.m.renderLegend(200))
+	}
+	h.press("2")
+	if h.m.sh.Rect(paneCopy).H != 0 {
+		t.Error("another tab brought the reference back")
+	}
+
+	h.press("1", "c")
+	if h.m.sh.Rect(paneDetail).H != detail {
+		t.Errorf("a second c did not restore the split: detail %d, want %d", h.m.sh.Rect(paneDetail).H, detail)
+	}
+}
+
+// The reference slides: right after "c" it is still drawn at full height, and
+// it reaches none once its frames have run.
+func TestTheReferenceSlidesAway(t *testing.T) {
+	h := newHarness(t)
+	h.open("kv/app/prod/db")
+	full := h.m.sh.Rect(paneCopy).H
+
+	_, cmd := h.m.Update(bezeltest.Key("c"))
+	if !h.m.refSlide.Active() || h.m.sh.Rect(paneCopy).H != full {
+		t.Fatalf("the reference jumped: %d rows, was %d", h.m.sh.Rect(paneCopy).H, full)
+	}
+	h.run(cmd)
+	if h.m.refSlide.Active() || h.m.sh.Rect(paneCopy).H != 0 {
+		t.Errorf("the slide did not land: %d rows", h.m.sh.Rect(paneCopy).H)
 	}
 }
