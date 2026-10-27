@@ -24,7 +24,7 @@ Navigation is arrow keys and `enter`, everywhere. Letters are only ever actions,
 | `:` | run any of these by name, listed as you type |
 | `?` | help  ·  `q` quit |
 
-`?` lists the keys for the tab you are on, plus the ones that work anywhere. The legend under the panes is contextual too, and drops the rare actions first when the terminal is narrow; `?` is the key it never drops.
+`?` lists the keys for the tab you are on, plus the ones that work anywhere. The legend under the panes is contextual too, and drops the rare actions first when the terminal is narrow. Its first row is how to get around, closing on `?`, and its second what acts on the cursor; when keys are dropped, the count of them names `?` instead.
 
 ## The editor
 

@@ -311,9 +311,8 @@ func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
 	if ctx.Focus == ui.FocusDetail {
 		return status, append(ui.ScrollLegend(), ui.Actions(legend.New("p", "go to policy"), legend.New("R", "reload"))...)
 	}
-	return status, ui.ListLegend("move",
-		append([]legend.Entry{legend.New("→/enter", "roles, then detail")},
-			ui.Actions(legend.New("p", "go to policy"), legend.New("R", "reload"))...)...)
+	return status, ui.ListLegend("move", []legend.Entry{legend.New("→/enter", "roles, then detail")},
+		ui.Actions(legend.New("p", "go to policy"), legend.New("R", "reload"))...)
 }
 
 func (m *Model) Help(ctx ui.Context) ui.HelpSection {

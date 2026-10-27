@@ -412,18 +412,24 @@ func TestTheLegendCountsWhatItHadToDrop(t *testing.T) {
 // The wording of the "r" toggle is the Secrets tab's own and is proved there:
 // it conjugates on which fields are up, which is that tab's state.
 
-// The first row is how to get around and the second what can be done where
-// the cursor is, on every tab, as long as both fit whole.
+// The first row is how to get around, in one order everywhere: the tabs, the
+// moves, the command line, then help. The second is what acts on the cursor.
 func TestTheLegendPutsTheActionsOnTheSecondRow(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		walk      []string
 		nav, acts string
 	}{
-		{"a secret", nil, "[/] filter", "[r] reveal secret"},
-		{"the detail pane", []string{"enter"}, "[pgup/pgdn] scroll", "[r] reveal field"},
-		{"a policy", []string{"2"}, "[→/enter] read", "[y] copy HCL"},
-		{"an auth method", []string{"3"}, "[→/enter] roles, then detail", "[p] go to policy"},
+		{"a secret", nil,
+			"[tab] change tab  [↑/↓] move  [→/enter] focus detail  [:] commands  [/] filter  [?] help",
+			"[r] reveal secret"},
+		{"the detail pane", []string{"enter"},
+			"[tab] change tab  [↑/↓] fields  [esc/←] back to list  [pgup/pgdn] scroll  [:] commands  [?] help",
+			"[r] reveal field"},
+		{"a policy", []string{"2"},
+			"[tab] change tab  [↑/↓] move  [→/enter] read  [:] commands  [?] help", "[y] copy HCL"},
+		{"an auth method", []string{"3"},
+			"[tab] change tab  [↑/↓] move  [→/enter] roles, then detail  [:] commands  [?] help", "[p] go to policy"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			h := newHarness(t)
@@ -434,8 +440,12 @@ func TestTheLegendPutsTheActionsOnTheSecondRow(t *testing.T) {
 				t.Fatalf("want two rows at 200 columns, got %d: %q", len(lines), lines)
 			}
 			first, second := stripANSI(lines[0]), stripANSI(lines[1])
-			if !strings.HasPrefix(first, "[?] help") || !strings.Contains(first, tc.nav) {
-				t.Errorf("the first row is not the way around: %q", first)
+			if strings.TrimRight(first, " ") != tc.nav {
+				t.Errorf("the first row is\n%q, want\n%q", first, tc.nav)
+			}
+			// What the shell draws, and not only what vivi packs for the tests.
+			if view := stripANSI(h.view()); !strings.Contains(view, tc.nav) {
+				t.Errorf("the drawn footer does not open on %q:\n%s", tc.nav, footer(view))
 			}
 			if !strings.HasPrefix(second, tc.acts) {
 				t.Errorf("the second row does not open on the actions: %q", second)

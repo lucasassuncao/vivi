@@ -9,12 +9,11 @@ import "github.com/lucasassuncao/bezel/legend"
 // CapWrite marks a key a read-only session refuses; the shell drops it.
 const CapWrite legend.Capability = "write"
 
-// ListLegend opens every list's legend the same way, with the keys that mean
-// one thing anywhere ahead of what the arrows do here.
-func ListLegend(arrows string, rest ...legend.Entry) []legend.Entry {
-	return append([]legend.Entry{
-		legend.New("tab", "change tab"), legend.New("↑/↓", arrows), legend.New(":", "commands"),
-	}, rest...)
+// ListLegend opens every list's legend the same way: the tabs, the arrows and
+// moves, the other ways of moving here, then the command line, then the rest.
+func ListLegend(arrows string, moves []legend.Entry, rest ...legend.Entry) []legend.Entry {
+	out := append([]legend.Entry{legend.New("tab", "change tab"), legend.New("↑/↓", arrows)}, moves...)
+	return append(append(out, legend.New(":", "commands")), rest...)
 }
 
 // Actions puts entries on the legend's second row: the first is how to get
@@ -32,10 +31,8 @@ func Actions(entries ...legend.Entry) []legend.Entry {
 // a list of fields. Secrets has its own: there the arrows walk fields. Each
 // caller appends what its own tab can do.
 func ScrollLegend() []legend.Entry {
-	return []legend.Entry{
-		legend.New("tab", "change tab"), legend.New("↑/↓", "scroll"), legend.New(":", "commands"),
-		legend.New("esc/←", "back to list"), legend.New("pgup/pgdn", "half a page"),
-	}
+	return ListLegend("scroll",
+		[]legend.Entry{legend.New("esc/←", "back to list"), legend.New("pgup/pgdn", "half a page")})
 }
 
 // HintLine draws entries as one line of "[key] action". The footer packs the

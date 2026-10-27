@@ -86,11 +86,10 @@ func (m *Model) legendOf(md mode) []legend.Entry {
 	case choosingVersion:
 		// One pair per key, not "b/u": a slash reads as "the same thing". The
 		// irreversible one goes last, so a narrow terminal drops it first.
-		return ui.ListLegend("move", append([]legend.Entry{legend.New("enter", "read"), legend.New("esc", "back")},
+		return ui.ListLegend("move", []legend.Entry{legend.New("enter", "read"), legend.New("esc", "back")},
 			ui.Actions(legend.New("space", "mark"), legend.New("d", "diff"),
 				legend.New("b", "rollback", ui.CapWrite), legend.New("u", "undelete", ui.CapWrite),
-				legend.New("D", "destroy version", ui.CapWrite))...)...,
-		)
+				legend.New("D", "destroy version", ui.CapWrite))...)
 	case filtering:
 		return []legend.Entry{legend.New("type", "to filter"), legend.New("enter", "apply"), legend.New("esc", "clear")}
 	}

@@ -153,7 +153,7 @@ func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
 	if ctx.Focus == ui.FocusDetail {
 		return status, ui.ScrollLegend()
 	}
-	return status, ui.ListLegend("move", legend.New("→/enter", "detail"))
+	return status, ui.ListLegend("move", []legend.Entry{legend.New("→/enter", "detail")})
 }
 
 func (m *Model) Help(ctx ui.Context) ui.HelpSection {

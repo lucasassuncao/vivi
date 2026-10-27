@@ -31,18 +31,19 @@ func (a tabAdapter) Status(shell.Context) string {
 }
 
 // Actions is the tab's keys as the shell prints them. vivi routes every key
-// itself, so each is display only; "?" is pinned wherever keyBrowse gets it,
-// and stays out of the palette, which has vivi's own :help.
+// itself, so each is display only. "?" closes the first row wherever keyBrowse
+// gets it, and stays out of the palette, which has vivi's own :help.
 func (a tabAdapter) Actions(shell.Context) []shell.Action {
 	m := a.m
 	_, keys := m.tabFor(a.t).Legend(m.uiContext())
 	helps := shell.When(func(shell.Context) bool { return m.helpKey() != "" })
-	out := []shell.Action{shell.Help(shell.DisplayOnly(), shell.Named(""), helps)}
+	var out []shell.Action
 	for _, e := range keys {
 		h := e.Help()
 		out = append(out, shell.Custom(h.Key, h.Desc, nil, shell.WithKey(e.Keys()...), shell.Needs(e.Needs), shell.Group(e.Group), shell.DisplayOnly()))
 	}
-	return out
+	// Group 0 like the moves, and after them: the legend sorts by group, stably.
+	return append(out, shell.Help(shell.DisplayOnly(), shell.Named(""), helps))
 }
 
 // legend is the footer's keys for where the user is, after the read-only
@@ -61,7 +62,11 @@ const legendMaxLines = 3
 func (m *Model) legendLines(width int) []string {
 	st := m.st.Shell().Legend
 	st.HelpKey = m.helpKey()
-	return legend.Pack(m.legend(), width, legendMaxLines, st)
+	keys := m.legend()
+	if st.HelpKey != "" {
+		keys = append(keys, legend.New(st.HelpKey, "help")) // where the shell puts it
+	}
+	return legend.Pack(keys, width, legendMaxLines, st)
 }
 
 // renderLegend is legendLines joined, for the tests that read one line.
