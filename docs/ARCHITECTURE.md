@@ -53,48 +53,96 @@ Nothing here imports a terminal library. `TestAppNeverImportsAnAdapter` enforces
 
 ## internal/tui: the driving adapter
 
-Everything about being a terminal program: the tree, the panes, the modes, the key table, the rendering, and `safe.go`.
+Everything about being a terminal program: the tree, the panes, the modes, the key table and the rendering. It is not one package but a parent and five below it:
 
-`safe.go` stays here on purpose. Neutralising ANSI escapes and bidirectional overrides is a *terminal* concern (a web front end would need HTML escaping instead, not this) so it is an adapter's duty to its own medium, not a rule about Vault.
+```
+internal/tui            the parent: the session, the shell, the keys, the commands
+├── secrets             the Secrets tab
+├── policies            the Policies tab
+├── auth                the Auth tab
+├── activity            the Activity tab
+└── ui                  what the parent and a tab both have to speak
+```
 
-### One file per component
+The chrome is not vivi's. The header row, the tab strip, the panes' frames, the legend, the toasts and the overlay stack are drawn by bezel's `shell`, which the parent builds in `newShell` and configures: the layout, the tabs, the theme, the header lines, the write filter. vivi answers every key itself, so every action it hands the shell is display only: there to be printed in the legend and the palette, never to be run by the shell.
 
-The package is the unit of encapsulation in Go, so splitting it into files buys navigability rather than isolation: everything here still sees everything. What it buys is that a component is one file: what it draws, what keys it answers, and what it asks the server for, in the order you read them.
+Neutralising ANSI escapes and bidirectional overrides is still a *terminal* concern, and so still the adapter's (a web front end would need HTML escaping instead, not this). It is done by bezel's `draw.Sanitize` on everything that arrives from the server, at the point it is drawn.
 
-`view.go` and `model.go` used to be two thousand and fourteen hundred lines and held every tab between them, so a change to the Auth pane meant three hops. The cut below is what they became.
+### A tab is a package
+
+A tab used to be a file in one package, which bought navigability and nothing else: everything still saw everything, so a tab could reach into the parent's fields, and the boundary held only as long as nobody needed to cross it. As a package, a tab cannot see the parent at all. The Go import graph makes it so: the parent imports every tab, so a tab importing the parent would be a cycle the compiler refuses.
+
+What a tab is to the parent is the `Tab` interface in `tab.go`: what it loads, what it draws in each pane, what keys it takes, what its legend, help and Command Reference say, and what it floats over the panes. Every method there was a `switch m.tab` arm before it was a method. `tabAdapter` in `legend.go` turns a `Tab` into what bezel's shell asks for.
+
+Since a tab cannot write the parent, everything it wants from outside itself goes one of two ways:
+
+- **A message**, for what the parent owns: a toast (`BannerMsg`), the clipboard (`CopyMsg`), the focus, the detail pane's scroll. The tab returns a command that emits one, and the parent folds it.
+- **The `Requester`**, for the server. It is injected rather than asked for by message because the answer has to come back to the tab that asked; the parent only wraps the call in the session's context, the timeout and the count of calls in flight.
+
+### internal/tui/ui: the shared vocabulary
+
+What the parent and a tab both have to name lives in `ui`, because it can live in neither: the parent imports every tab, and a tab cannot import the parent.
 
 | file | is |
 |---|---|
-| `view.go` | the dispatcher: which component is on screen right now, and nothing else |
-| `model.go` | the state, `Update`, and what bounds a request |
-| `update.go` | what the loop does with an answer, including the stale ones |
+| `context.go` | the session's view of itself that every call hands a tab: focus, the body's size, styles, the token's policies, whether it may write |
+| `messages.go` `request.go` | the two ways a tab asks for what it does not own |
+| `legend.go` | the shapes a legend is built from: `ListLegend`, `ScrollLegend`, `Actions` for the second row, `CapWrite` for what a read-only session drops |
+| `styles.go` `shell.go` | vivi's styles, and the bezel theme dressed in them so the shell's chrome wears the tabs' colours |
+| `panel.go` `modal.go` `text.go` `values.go` | the furniture every pane is built from: the narrow limit, the modal box, the mask, how a value and a failure read on screen |
+
+### The parent
+
+| file | is |
+|---|---|
+| `model.go` | the session's state, `Update`, the shell it builds, and what bounds a request |
+| `tab.go` | the `Tab` interface, and the last switch over the tabs, which is the dispatch table itself |
+| `update.go` | what the loop does with an answer: the token is the parent's, everything else is offered to the tabs |
 | `keys.go` | where a keystroke goes: the mode decides, then the tab |
 | `layout.go` | how the terminal is divided, decided without rendering anything |
-| `header.go` | the two lines above the panes |
-| `legend.go` | the two lines below them |
-| `secrets.go` `policies.go` `auth.go` `activity.go` | one tab each: its panes and its keys |
-| `tree.go` | the lazy forest and the rows it draws |
-| `edit.go` | the field editor: its model, its pane, and the save |
-| `field.go` | the form one field is typed in: key, type, a text area for the value, and what the save will write |
-| `versions.go` | the version list, and the four operations only it carries |
-| `diff.go` | the comparison |
-| `copy.go` | the Command Reference panel, and what reaches the clipboard |
-| `command.go` `cmdline.go` | the table of commands, and the line that runs them |
-| `help.go` `token.go` `modal.go` `confirm.go` | the things that float over a tab |
-| `panel.go` `overlay.go` `text.go` `styles.go` `safe.go` `hcl.go` | the shared furniture |
-| `readonly.go` | the one gate every write passes, and how a refusal is worded |
+| `view.go` | the smallest terminal vivi draws into, and the frame |
+| `header.go` | the lines above the panes: which server this is, and how dangerous it is |
+| `legend.go` | the tabs as the shell sees them: their names, their status, their keys |
+| `command.go` `actions.go` | the table of `:` commands, and the same table as bezel actions for the palette |
+| `copy.go` | the Command Reference panel at the bottom of the right column |
+| `help.go` `token.go` `overlays.go` | the panels that open over any tab: `?` and the token |
+| `readonly.go` | how a refusal is worded, and the header's half of the read-only gate |
+| `cmds.go` `text.go` | the parent's own traffic and timers: the token's countdown, the clock, the toast's life |
 | `crash.go` `debug.go` | the report a panic leaves, and the keystroke log `VIVI_DEBUG` asks for |
-| `cmds.go` | every request, as a `tea.Cmd` |
 
-Two of those are deliberately *not* distributed into the components. `layout.go` divides the column for whichever tab is in front, and `legend.go` reads the context of every one of them: they are cross-cutting by design, and splitting them across four files would put one rule in four places.
+`layout.go` and `legend.go` stay in the parent on purpose. They read every tab's context and divide the screen for whichever is in front: they are cross-cutting by design, and pushing them into the tabs would put one rule in four places.
 
-There is no `helpers.go`, and there was an `actions.go`: six hundred lines holding the editor's keys, the diff's keys, the version list's four operations and the modal's key handler, which is the drawer this layout exists to prevent. Each of those went to the component it belongs to. A file named for what it contains can be found; a file named for what it is not cannot.
+### The tabs
 
-Every file with behaviour worth pinning has a `_test.go` beside it, and the tests moved with the code they cover. The ones without are the small drawing helpers (`confirm.go`, `crash.go`, `debug.go`, `field.go`, `modal.go`, `overlay.go`, `text.go`), which the component tests exercise through the frames they render. Three test files are deliberately not paired with a component, and they are three different things rather than one:
+**secrets** is the large one, and the only one that writes, which is why the read-only gate that every write passes through (`mutate`, in its `readonly.go`) lives there and not in the parent. It is one file per component, each holding what it draws, what keys it answers and what it asks the server for:
 
-- **`harness_test.go` contains no tests at all.** It is the driver: it runs the model synchronously, feeding every command's message back so an assertion can read the state after the server has answered. Every other test file depends on it.
+| file | is |
+|---|---|
+| `model.go` `tab.go` | the tab's state and its modes, and what it answers the parent |
+| `update.go` `cmds.go` | the server's answers, and every request as a `tea.Cmd` |
+| `tree.go` | the lazy forest and the rows it draws |
+| `secrets.go` | the detail pane: data, versions, metadata, permissions |
+| `edit.go` | the editor: its table, its pane, and the save |
+| `field.go` | the form one field is typed in, the one place a value is typed |
+| `versions.go` | the version list, and the operations that only exist there |
+| `diff.go` | the comparison of two versions |
+| `confirm.go` `modal.go` | the pending destructive action, its friction graded by `app/safety.go`, and its box |
+| `copy.go` | what `y` copies, and the Command Reference's rows |
+| `legend.go` `palette.go` | the keys the footer offers, and what the palette needs to know and run |
+| `goto.go` | walking to a path for `:goto` |
+| `inspect.go` `crash.go` | what the tab says about itself to the tests that drive the whole app, and to a crash report |
+
+**policies**, **auth** and **activity** are a file each (`policies` has `hcl.go` beside it, the small lexer that colours a policy document). Activity loads nothing: it is the log of what this session wrote, built from the writes as they happen.
+
+### Tests
+
+Every file with behaviour worth pinning has a `_test.go` beside it. The ones without are the small drawing helpers and the shared vocabulary in `ui`, which the component tests exercise through the frames they render. Three kinds of test file are deliberately not paired with a component, and the parent and `secrets` each have their own of the first and the last:
+
+- **`harness_test.go` contains no tests at all.** It is the driver: it runs the model synchronously, feeding every command's message back so an assertion can read the state after the server has answered. It drops timers (the toast's frames and expiry, the clock, the caret's blink): feeding one back would re-arm it and the run would never settle.
 - **`invariants_test.go` pins the architecture**, the way `internal/app/architecture_test.go` does for the layering: View never writes to the model, and the update loop is total over its own messages. These fail when a design rule is broken, not when a feature is.
 - **`panics_test.go` is a regression suite.** Each test is a crash that happened once (a mode with no payload, a stale command cursor, a negative height) kept so it cannot happen twice. It is named for the symptom because the cases have nothing else in common.
+
+The smaller tabs are tested in two places: in their own package for what they draw, and in the parent (`policies_test.go`, `auth_test.go`, `activity_test.go`) for the tab inside the whole app: reached by its key, jumping to another tab, showing what a write in Secrets left in the log.
 
 ## internal/vault: the port, and one adapter
 
