@@ -122,7 +122,7 @@ func (m *Model) focusDetailPane() {
 // selection that has scrolled out of view is worse than no selection, because r
 // and y still act on it. The viewport is the shell's, so this is a request.
 func (m *Model) followFieldCursor() {
-	m.outbox = append(m.outbox, ui.ScrollToLineMsg{Line: fieldsStartLine + m.fieldCursor})
+	m.outbox = append(m.outbox, ui.ScrollToLineMsg{Line: m.fieldsStartLine() + m.fieldCursor})
 }
 
 // followVersionCursor is followFieldCursor for the version list, which on a

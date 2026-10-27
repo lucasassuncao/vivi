@@ -23,9 +23,20 @@ import (
 // over while a secret is written lives in edit.go for the same reason.
 
 // fieldsStartLine is where the first data field lands in the pane's content:
-// version label, blank line, "data" rule. A constant because View may not write
-// to the model, and pinned by TestFieldsStartWhereTheCursorThinksTheyDo.
-const fieldsStartLine = 3
+// under the "data" rule, and the version label and a blank line when shown.
+// Pinned by TestFieldsStartWhereTheCursorThinksTheyDo.
+func (m *Model) fieldsStartLine() int {
+	if m.versionLabelShown() {
+		return 3
+	}
+	return 1
+}
+
+// versionLabelShown reports whether the pane opens on the version label. On
+// the current version the version list already says so, with its date.
+func (m *Model) versionLabelShown() bool {
+	return m.secret == nil || m.meta == nil || len(m.versions) == 0 || m.secret.Version != m.meta.CurrentVersion
+}
 
 // versionsStartLine is where the first version row lands: after the fields,
 // or the error banner, a blank line and the "versions" rule. Pinned by
@@ -38,7 +49,7 @@ func (m *Model) versionsStartLine() int {
 		}
 		return banner + 3
 	}
-	return fieldsStartLine + max(1, len(m.sortedKeys())) + 2
+	return m.fieldsStartLine() + max(1, len(m.sortedKeys())) + 2
 }
 
 // renderSecretDetail is the right pane on the Secrets tab. It is never blank:
@@ -60,7 +71,8 @@ func (m *Model) renderSecretDetail(width int) string {
 		return m.renderDirDetail(n, width)
 	}
 
-	// The path is the panel's title now, so the body opens on the version line.
+	// The path is the panel's title, so the body opens on the version line, or
+	// on the data where the version list already names the version.
 	var b strings.Builder
 
 	if m.detailErr != nil {
@@ -78,8 +90,10 @@ func (m *Model) renderSecretDetail(width int) string {
 		return b.String() + m.st.Dim.Render("loading…")
 	}
 
-	b.WriteString(m.st.Dim.Render(m.versionLabel()))
-	b.WriteString("\n\n")
+	if m.versionLabelShown() {
+		b.WriteString(m.st.Dim.Render(m.versionLabel()))
+		b.WriteString("\n\n")
+	}
 	b.WriteString(m.st.HeadingBadged("data", m.maskBadge(), width))
 	b.WriteString("\n")
 
@@ -214,7 +228,6 @@ func (m *Model) renderMetadata(width int) string {
 	// a panel describing the secret's state. "max_versions 0" is the worst: a
 	// zero there means unlimited, and it reads as none.
 	rows := [][2]string{
-		{"current version", fmt.Sprint(m.meta.CurrentVersion)},
 		{"oldest kept", oldestKept(m.meta.OldestVersion)},
 		{"keeps", versionLimit(m.meta.MaxVersions)},
 		{"check-and-set", requiredOrNot(m.meta.CASRequired)},

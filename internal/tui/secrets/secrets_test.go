@@ -329,24 +329,28 @@ func TestArrowsMoveBetweenFieldsInTheDetailPane(t *testing.T) {
 	}
 }
 
-// fieldsStartLine is a constant the field cursor scrolls by, so it has to agree
-// with where the fields actually land.
+// fieldsStartLine is what the field cursor scrolls by, so it has to agree with
+// where the fields land, with the version label up and without it.
 func TestFieldsStartWhereTheCursorThinksTheyDo(t *testing.T) {
 	h := newHarness(t)
 	h.open("kv/app/prod/db")
 
-	pane := m2lines(h.m.renderSecretDetail(60))
-	keys := h.m.sortedKeys()
-	if len(keys) == 0 {
-		t.Fatal("precondition: the secret should have fields")
-	}
-
-	if fieldsStartLine >= len(pane) {
-		t.Fatalf("fieldsStartLine = %d but the pane has %d lines", fieldsStartLine, len(pane))
-	}
-	if !strings.Contains(pane[fieldsStartLine], keys[0]) {
-		t.Errorf("line %d is %q, expected the first field %q\nfull pane:\n%s",
-			fieldsStartLine, pane[fieldsStartLine], keys[0], strings.Join(pane, "\n"))
+	for _, where := range []string{"current", "historical"} {
+		if where == "historical" {
+			h.press("v", "down", "enter")
+		}
+		keys := h.m.sortedKeys()
+		if len(keys) == 0 {
+			t.Fatalf("%s: precondition: the secret should have fields", where)
+		}
+		pane, start := m2lines(h.m.renderSecretDetail(60)), h.m.fieldsStartLine()
+		if start >= len(pane) {
+			t.Fatalf("%s: fieldsStartLine = %d but the pane has %d lines", where, start, len(pane))
+		}
+		if !strings.Contains(pane[start], keys[0]) {
+			t.Errorf("%s: line %d is %q, expected the first field %q\nfull pane:\n%s",
+				where, start, pane[start], keys[0], strings.Join(pane, "\n"))
+		}
 	}
 }
 
@@ -449,9 +453,9 @@ func TestTheMetadataBlockDescribesTheSecretNotTheVersion(t *testing.T) {
 	if !strings.Contains(current, "METADATA") {
 		t.Fatalf("the detail pane has no METADATA section:\n%s", current)
 	}
-	// The header is the only place the version on screen is named now.
-	if !strings.Contains(current, "v4 of 4") {
-		t.Errorf("the header does not name the version on screen:\n%s", current)
+	// On the current version the list's badge names it; a header would repeat it.
+	if strings.Contains(current, "v4 of 4") {
+		t.Errorf("the header repeats the version list on the current version:\n%s", current)
 	}
 	if strings.Contains(current, "THIS VERSION") {
 		t.Errorf("the block that restated the header is still there:\n%s", current)
@@ -469,10 +473,12 @@ func TestTheMetadataBlockDescribesTheSecretNotTheVersion(t *testing.T) {
 	if !strings.Contains(historical, "historical (read-only)") {
 		t.Errorf("a historical version should say so:\n%s", historical)
 	}
-	// ...and the metadata does not: it is the same secret either way, which is
-	// the half that was being read as a bug in the version selector.
-	if !strings.Contains(historical, "current version  4") {
-		t.Errorf("the metadata should still name the secret's current version:\n%s", historical)
+	// ...and the list does not: the secret's current version is still badged.
+	if !strings.Contains(historical, "✓ current") {
+		t.Errorf("the version list should still badge the secret's current version:\n%s", historical)
+	}
+	if strings.Contains(historical, "current version") {
+		t.Errorf("the metadata repeats the version list's badge:\n%s", historical)
 	}
 }
 
