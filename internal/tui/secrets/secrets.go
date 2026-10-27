@@ -228,7 +228,7 @@ func (m *Model) renderMetadata(width int) string {
 	// a panel describing the secret's state. "max_versions 0" is the worst: a
 	// zero there means unlimited, and it reads as none.
 	rows := [][2]string{
-		{"oldest kept", oldestKept(m.meta.OldestVersion)},
+		{"oldest version", oldestVersion(m.meta.OldestVersion)},
 		{"keeps", versionLimit(m.meta.MaxVersions)},
 		{"check-and-set", requiredOrNot(m.meta.CASRequired)},
 		{"updated", m.meta.UpdatedTime.Format("2006-01-02 15:04")},
@@ -259,11 +259,11 @@ func (m *Model) renderCustomMetadata(width int) string {
 	return b.String()
 }
 
-// oldestKept says what version 0 means: nothing has aged out yet, so the whole
-// history is still there.
-func oldestKept(v int) string {
+// oldestVersion says what version 0 means: nothing has aged out yet, so v1 is
+// still in the history, destroyed or not. "Kept" read as "its data survives".
+func oldestVersion(v int) string {
 	if v == 0 {
-		return "v1 (nothing pruned yet)"
+		return "v1"
 	}
 	return fmt.Sprintf("v%d", v)
 }

@@ -430,11 +430,11 @@ func TestMetadataSpellsOutVaultsZeroes(t *testing.T) {
 	if got := versionLimit(5); !strings.Contains(got, "5") {
 		t.Errorf("versionLimit(5) = %q, want the number", got)
 	}
-	if got := oldestKept(0); !strings.Contains(got, "v1") {
-		t.Errorf("oldestKept(0) = %q, want it to name the oldest surviving version", got)
+	if got := oldestVersion(0); got != "v1" {
+		t.Errorf("oldestVersion(0) = %q, want it to name the oldest surviving version", got)
 	}
-	if got := oldestKept(3); got != "v3" {
-		t.Errorf("oldestKept(3) = %q, want \"v3\"", got)
+	if got := oldestVersion(3); got != "v3" {
+		t.Errorf("oldestVersion(3) = %q, want \"v3\"", got)
 	}
 	if requiredOrNot(true) == requiredOrNot(false) {
 		t.Error("check-and-set reads the same whether it is required or not")
