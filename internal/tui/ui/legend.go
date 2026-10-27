@@ -17,6 +17,17 @@ func ListLegend(arrows string, rest ...legend.Entry) []legend.Entry {
 	}, rest...)
 }
 
+// Actions puts entries on the legend's second row: the first is how to get
+// around, the second what can be done where the cursor is.
+func Actions(entries ...legend.Entry) []legend.Entry {
+	out := make([]legend.Entry, len(entries))
+	for i, e := range entries {
+		e.Group = 1
+		out[i] = e
+	}
+	return out
+}
+
 // ScrollLegend is the legend for a focused pane holding a document rather than
 // a list of fields. Secrets has its own: there the arrows walk fields. Each
 // caller appends what its own tab can do.

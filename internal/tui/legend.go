@@ -40,7 +40,7 @@ func (a tabAdapter) Actions(shell.Context) []shell.Action {
 	out := []shell.Action{shell.Help(shell.DisplayOnly(), shell.Named(""), helps)}
 	for _, e := range keys {
 		h := e.Help()
-		out = append(out, shell.Custom(h.Key, h.Desc, nil, shell.WithKey(e.Keys()...), shell.Needs(e.Needs), shell.DisplayOnly()))
+		out = append(out, shell.Custom(h.Key, h.Desc, nil, shell.WithKey(e.Keys()...), shell.Needs(e.Needs), shell.Group(e.Group), shell.DisplayOnly()))
 	}
 	return out
 }

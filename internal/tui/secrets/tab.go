@@ -205,11 +205,11 @@ func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
 		// here the cursor is on a field, there it is on the secret.
 		head := []legend.Entry{legend.New("esc/←", "back to list"), legend.New("pgup/pgdn", "scroll")}
 		return status, ui.ListLegend("fields",
-			append(head, m.actions(m.revealFieldLegend(), copyFieldLegend, paneDeleteLegend, true)...)...)
+			append(head, ui.Actions(m.actions(m.revealFieldLegend(), copyFieldLegend, paneDeleteLegend, true)...)...)...)
 	}
 	head := append(m.openLegend(), legend.New("/", "filter"))
 	return status, ui.ListLegend("move",
-		append(head, m.actions(m.revealSecretLegend(), copySecretLegend, m.listDeleteLegend(), false)...)...)
+		append(head, ui.Actions(m.actions(m.revealSecretLegend(), copySecretLegend, m.listDeleteLegend(), false)...)...)...)
 }
 
 // actions are the keys that act on what the cursor is on, each shown only where

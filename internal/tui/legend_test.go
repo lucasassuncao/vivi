@@ -411,3 +411,35 @@ func TestTheLegendCountsWhatItHadToDrop(t *testing.T) {
 
 // The wording of the "r" toggle is the Secrets tab's own and is proved there:
 // it conjugates on which fields are up, which is that tab's state.
+
+// The first row is how to get around and the second what can be done where
+// the cursor is, on every tab, as long as both fit whole.
+func TestTheLegendPutsTheActionsOnTheSecondRow(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		walk      []string
+		nav, acts string
+	}{
+		{"a secret", nil, "[/] filter", "[r] reveal secret"},
+		{"the detail pane", []string{"enter"}, "[pgup/pgdn] scroll", "[r] reveal field"},
+		{"a policy", []string{"2"}, "[→/enter] read", "[y] copy HCL"},
+		{"an auth method", []string{"3"}, "[→/enter] roles, then detail", "[p] go to policy"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t)
+			h.open("kv/app/prod/db")
+			h.press(tc.walk...)
+			lines := h.m.legendLines(200)
+			if len(lines) != 2 {
+				t.Fatalf("want two rows at 200 columns, got %d: %q", len(lines), lines)
+			}
+			first, second := stripANSI(lines[0]), stripANSI(lines[1])
+			if !strings.HasPrefix(first, "[?] help") || !strings.Contains(first, tc.nav) {
+				t.Errorf("the first row is not the way around: %q", first)
+			}
+			if !strings.HasPrefix(second, tc.acts) {
+				t.Errorf("the second row does not open on the actions: %q", second)
+			}
+		})
+	}
+}
