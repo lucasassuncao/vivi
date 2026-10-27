@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 	"github.com/lucasassuncao/vivi/internal/vault"
@@ -666,5 +667,34 @@ func TestVersionsStartBelowTheDeletedBanner(t *testing.T) {
 	want := "v" + strconv.Itoa(h.m.versions[0].Version) + " "
 	if line >= len(pane) || !strings.Contains(pane[line], want) {
 		t.Errorf("line %d should be the first version %q\nfull pane:\n%s", line, want, strings.Join(pane, "\n"))
+	}
+}
+
+// Every section's keys start in one column and its values in another, the
+// data's included: its cursor gutter is the same two columns as their indent.
+func TestTheDetailSectionsShareOneGrid(t *testing.T) {
+	h := newHarness(t)
+	h.resize(120, 60)
+	h.open("kv/app/prod/db")
+	h.press("enter", "r")
+
+	// cols is where row's key starts and where its value starts after it.
+	cols := func(row string) (key, value int) {
+		for _, line := range strings.Split(stripANSI(h.m.renderSecretDetail(100)), "\n") {
+			if strings.HasPrefix(strings.TrimLeft(line, " ›"), row+" ") {
+				i := strings.Index(line, row)
+				rest := line[i+len(row):]
+				j := i + len(row) + len(rest) - len(strings.TrimLeft(rest, " "))
+				return utf8.RuneCountInString(line[:i]), utf8.RuneCountInString(line[:j])
+			}
+		}
+		t.Fatalf("no %q row", row)
+		return 0, 0
+	}
+	dataKey, dataValue := cols("host")
+	metaKey, metaValue := cols("keeps")
+	if dataKey != metaKey || dataValue != metaValue {
+		t.Errorf("the data's key and value start at %d and %d, the metadata's at %d and %d",
+			dataKey, dataValue, metaKey, metaValue)
 	}
 }

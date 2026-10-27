@@ -96,21 +96,16 @@ func (m *Model) renderSecretDetail(width int) string {
 			cursor = m.st.Cursor.Render("› ")
 		}
 
-		// The glyph marks the exception, a value on screen: masking is already
-		// said by the badge and the dots, and a marker on every row marks
-		// nothing. The columns are still spent, so the keys stay aligned.
-		var glyph, value string
+		// The glyph marks the exception, a value on screen, and sits before it
+		// so the keys keep the column every other section's keys start in.
+		value := m.st.Masked.Render(ui.MaskedValue)
 		if m.revealed[k] {
-			glyph = m.st.Warn.Render("◉ ")
 			// Sanitized here and not in valueToString, which also feeds the
 			// editor and the clipboard: those two must see the real bytes.
-			value = draw.Sanitize(valueToString(m.secret.Data[k]))
-		} else {
-			glyph = "  "
-			value = m.st.Masked.Render(ui.MaskedValue)
+			value = m.st.Warn.Render("◉ ") + draw.Sanitize(valueToString(m.secret.Data[k]))
 		}
 
-		line := cursor + glyph + m.st.Key.Render(fmt.Sprintf("%-16s ", draw.Sanitize(k))) + value
+		line := cursor + m.st.Key.Render(fmt.Sprintf("%-16s ", draw.Sanitize(k))) + value
 		b.WriteString(draw.Cut(line, width))
 		b.WriteString("\n")
 	}
