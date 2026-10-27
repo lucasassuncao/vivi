@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/lucasassuncao/bezel/shell"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
 
@@ -327,21 +328,30 @@ func footer(view string) string {
 }
 
 // The status line says nothing about the tree until there is something to say.
-// A count of expanded nodes reports what was opened rather than what exists, so
-// it changes as you browse. The filter stays: the user put the pane into it.
-func TestTheSecretsFooterOnlyReportsTheFilter(t *testing.T) {
+// No tab counts anything under the panes: the status row is only the filter's
+// line while it is typed, and a filter in force says so in the list's title.
+func TestTheStatusRowIsOnlyTheFilterBeingTyped(t *testing.T) {
 	h := newHarness(t)
-
-	if strings.Contains(h.view(), "nodes") {
-		t.Errorf("the footer still counts nodes:\n%s", h.view())
-	}
+	bodyH := h.m.sh.Body().H
 
 	h.press("/")
+	if h.m.sh.Body().H != bodyH-1 {
+		t.Errorf("typing the filter did not bring the row up: body %d, was %d", h.m.sh.Body().H, bodyH)
+	}
 	h.typeText("kv")
 	h.press("enter")
 
-	if !strings.Contains(h.view(), "filter: kv") {
-		t.Errorf("the footer does not report the filter the pane is under:\n%s", h.view())
+	if h.m.sh.Body().H != bodyH {
+		t.Errorf("the row stayed after the filter was set: body %d, was %d", h.m.sh.Body().H, bodyH)
+	}
+	if left, _ := h.m.secretsTab.Titles(); !strings.Contains(left, "filter: kv") {
+		t.Errorf("the list's title does not report the filter it is under: %q", left)
+	}
+	for _, tab := range []string{"policies", "auth", "activity"} {
+		h.runCommand("tab " + tab)
+		if status := (tabAdapter{m: h.m, t: h.m.tab}).Status(shell.Context{}); status != "" {
+			t.Errorf("the %s tab still counts on the status row: %q", tab, status)
+		}
 	}
 }
 

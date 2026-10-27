@@ -150,7 +150,6 @@ func (m *Model) moveTo(i int) tea.Cmd {
 }
 
 func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
-	status = fmt.Sprintf("%d writes this session", len(m.entries))
 	if ctx.Focus == ui.FocusDetail {
 		return status, ui.ScrollLegend()
 	}

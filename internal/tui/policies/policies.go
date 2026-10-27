@@ -6,7 +6,6 @@ package policies
 
 import (
 	"context"
-	"fmt"
 	"github.com/lucasassuncao/bezel/draw"
 	"github.com/lucasassuncao/bezel/layout"
 	"github.com/lucasassuncao/bezel/legend"
@@ -275,7 +274,6 @@ func (m *Model) CopyDoc() tea.Cmd {
 }
 
 func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
-	status = fmt.Sprintf("%d policies", len(m.names))
 	if ctx.Focus == ui.FocusDetail {
 		return status, append(ui.ScrollLegend(), legend.New("y", "copy HCL"), legend.New("R", "reload"))
 	}

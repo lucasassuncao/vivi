@@ -79,7 +79,7 @@ vivi
 
 ### What the token has to be allowed to do
 
-vivi draws a tree of mounts, so it reads the mount table once at startup and needs `read` on `sys/mounts`. That is what tells a KV v1 mount from a v2 one, and every path below depends on the answer. A token denied there starts, but onto an empty tree, with `load mounts: permission denied` in the footer. It is the one capability beyond the paths you actually want to read, and the `vault` CLI does not need it because it probes one mount at a time.
+vivi draws a tree of mounts, so it reads the mount table once at startup and needs `read` on `sys/mounts`. That is what tells a KV v1 mount from a v2 one, and every path below depends on the answer. A token denied there starts, but onto an empty tree, with `load mounts: permission denied` in a toast. It is the one capability beyond the paths you actually want to read, and the `vault` CLI does not need it because it probes one mount at a time.
 
 ```hcl
 path "sys/mounts" {

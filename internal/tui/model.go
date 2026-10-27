@@ -194,6 +194,8 @@ func (m *Model) newShell() shell.Shell {
 		// vivi answers every key itself: its tabs' actions are display only.
 		StatusTTL:   bannerLife,
 		LegendLines: legendMaxLines,
+		// Messages are toasts; the row shows only while a line is typed on it.
+		StatusStyle: shell.Toast,
 	})
 }
 

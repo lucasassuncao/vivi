@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -256,14 +257,22 @@ func TestATerminalBelowTheMinimumSaysSo(t *testing.T) {
 	}
 }
 
-// The banner starts at the left edge, in line with the legend under it.
-func TestTheBannerIsFlushLeft(t *testing.T) {
+// A notice is a toast in the top right corner, not a line on the status row,
+// which keeps the tab's own count.
+func TestANoticeIsAToast(t *testing.T) {
+	t.Setenv("BEZEL_NO_MOTION", "1") // the toast shows at once; the harness drops its frames
 	h := newHarness(t)
 	h.m.notify("copied: kv/app")
-	for _, line := range strings.Split(h.view(), "\n") {
-		if strings.Contains(line, "copied: kv/app") && !strings.HasPrefix(line, "copied: kv/app") {
-			t.Errorf("the banner is indented: %q", line)
-		}
+
+	lines := strings.Split(h.view(), "\n")
+	row := slices.IndexFunc(lines, func(l string) bool { return strings.Contains(l, "copied: kv/app") })
+	switch {
+	case row < 0:
+		t.Fatalf("the toast is not on screen:\n%s", h.view())
+	case row > len(lines)/2:
+		t.Errorf("the notice sits low, on the status row: %q", lines[row])
+	case strings.Index(lines[row], "copied") < len(lines[row])/2:
+		t.Errorf("the toast is not in the right corner: %q", lines[row])
 	}
 }
 

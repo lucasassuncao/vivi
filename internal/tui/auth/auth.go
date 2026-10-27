@@ -308,7 +308,6 @@ func (m *Model) clampCursors() {
 }
 
 func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
-	status = fmt.Sprintf("%d auth methods  ·  %d roles", len(m.methods), len(m.CurrentRoles()))
 	if ctx.Focus == ui.FocusDetail {
 		return status, append(ui.ScrollLegend(), legend.New("p", "go to policy"), legend.New("R", "reload"))
 	}

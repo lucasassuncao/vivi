@@ -129,21 +129,25 @@ func (m *Model) Data(msg tea.Msg) tea.Cmd {
 }
 
 func (m *Model) Titles() (left, right string) {
+	left = "Secrets"
+	if m.tree.filter != "" {
+		left += " · filter: " + m.tree.filter
+	}
 	if e := m.currentEditor(); e != nil {
 		// The title said "editing" while the body said "creating", which is the
 		// one distinction that changes what the save does.
 		if e.creating {
-			return "Secrets", "creating " + e.path
+			return left, "creating " + e.path
 		}
-		return "Secrets", "editing " + e.path
+		return left, "editing " + e.path
 	}
 	// shownNode, not the cursor: while a secret is being read the pane is still
 	// showing the previous one, and a title running ahead of the body would put
 	// one secret's name over another's fields.
 	if n := m.shownNode(); n != nil {
-		return "Secrets", n.fullPath()
+		return left, n.fullPath()
 	}
-	return "Secrets", "Detail"
+	return left, "Detail"
 }
 
 func (m *Model) RenderList(width, height int, ctx ui.Context) string {
@@ -186,13 +190,9 @@ func (m *Model) Overlay(ctx ui.Context) string {
 func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
 	m.adopt(ctx)
 
-	// The count describes what the left pane is listing. The tree has none: it
-	// is lazy, so a node count reports what was expanded rather than what is
-	// there. The filter still reports itself - the user put it there.
-	switch {
-	case m.tree.filter != "":
-		status = "filter: " + m.tree.filter
-	case modeIs[filtering](m):
+	// The status row is the filter's line while it is typed, and nothing else:
+	// a filter in force says so in the list's title.
+	if modeIs[filtering](m) {
 		status = m.filterInput.View()
 	}
 

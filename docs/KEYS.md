@@ -104,7 +104,7 @@ The detail panel is the one that scrolls: content longer than the terminal, a po
 | `pgup` / `pgdn` | half a page |
 | `esc` / `←` | back to the list |
 
-The focused pane wears the accent border and an inverted title, and the footer shows how far into the document you are. On a secret the arrows walk the fields rather than scrolling by line, because the field under the cursor is what `r` and `y` act on. `y` follows that focus: from the list it takes the whole secret, since the cursor there is on a secret and not on a field.
+The focused pane wears the accent border and an inverted title, and its last row says how much of the document is below. On a secret the arrows walk the fields rather than scrolling by line, because the field under the cursor is what `r` and `y` act on. `y` follows that focus: from the list it takes the whole secret, since the cursor there is on a secret and not on a field.
 
 In the version list (`v`):
 

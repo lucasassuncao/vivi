@@ -37,7 +37,7 @@ func TestRenewFromTheTokenPanel(t *testing.T) {
 	if !h.m.token.ExpiresAt.After(before) {
 		t.Errorf("renew did not move the expiry: %v then %v", before, h.m.token.ExpiresAt)
 	}
-	if !strings.Contains(h.view(), "token renewed") {
+	if !strings.Contains(h.m.banner(), "token renewed") {
 		t.Error("renewal gave no feedback")
 	}
 }
@@ -74,7 +74,7 @@ func TestRenewRefusedForANonRenewableToken(t *testing.T) {
 	}
 
 	h.press("n")
-	if !strings.Contains(h.view(), "not renewable") {
+	if !strings.Contains(h.m.banner(), "not renewable") {
 		t.Error("a non-renewable token got no explanation")
 	}
 }
