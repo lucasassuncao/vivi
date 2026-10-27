@@ -60,7 +60,7 @@ func newHarness(t *testing.T) *harness {
 	}
 
 	// The shell looks the token up and hands the tab the policies it names,
-	// which is what the reverse lookup in the access section reads.
+	// which is what the reverse lookup in the permissions section reads.
 	if token, err := srv.TokenInfo(t.Context()); err == nil && token != nil {
 		h.ctx.TokenPolicies = token.Policies
 	}

@@ -125,36 +125,10 @@ func TestRevealLegendNamesTheNextPress(t *testing.T) {
 	}
 }
 
-// A policy naming the browsing path of a v2 secret grants nothing, silently.
-// vivi already resolved the mount's KV version to read it at all, so it is one
-// of the few tools able to state the right path without guessing.
-func TestTheAccessSectionNamesTheRealPolicyPath(t *testing.T) {
-	h := newHarness(t)
-	h.resize(120, 60)
-	h.open("kv/app/prod/db")
-
-	pane := stripANSI(h.m.renderAccess(h.m.tree.current(), 90))
-	for _, want := range []string{
-		"ACCESS",
-		"kv/data/app/prod/db",     // where a policy has to grant the data
-		"kv/metadata/app/prod/db", // and the history
-	} {
-		if !strings.Contains(pane, want) {
-			t.Errorf("the access section does not show %q:\n%s", want, pane)
-		}
-	}
-
-	// A v1 mount has no data/ segment and no metadata to grant.
-	h.open("legacy/old/app")
-	v1 := stripANSI(h.m.renderAccess(h.m.tree.current(), 90))
-	if strings.Contains(v1, "/data/") || strings.Contains(v1, "metadata path") {
-		t.Errorf("a v1 mount was given v2 paths:\n%s", v1)
-	}
-}
-
 // The capabilities line is the server's own verdict, and it is the only part of
-// this section that is a proof rather than an inference.
-func TestTheAccessSectionReportsTheServersVerdict(t *testing.T) {
+// this section that is a proof rather than an inference. The policy paths live
+// in the Command Reference, so the section does not repeat them.
+func TestThePermissionsSectionReportsTheServersVerdict(t *testing.T) {
 	h := newHarness(t)
 	h.resize(120, 60)
 	h.open("kv/app/prod/db")
@@ -162,9 +136,23 @@ func TestTheAccessSectionReportsTheServersVerdict(t *testing.T) {
 	if h.server.Calls["capabilities"] == 0 {
 		t.Fatal("selecting a secret did not ask the server what the token may do")
 	}
-	pane := stripANSI(h.m.renderAccess(h.m.tree.current(), 90))
-	if !strings.Contains(pane, "you may") || !strings.Contains(pane, "read") {
-		t.Errorf("the access section does not report the capabilities:\n%s", pane)
+	pane := stripANSI(h.m.renderPermissions(h.m.tree.current(), 90))
+	if !strings.Contains(pane, "PERMISSIONS") || !strings.Contains(pane, "this token can") || !strings.Contains(pane, "read") {
+		t.Errorf("the permissions section does not report the capabilities:\n%s", pane)
+	}
+	if strings.Contains(pane, "kv/metadata/") {
+		t.Errorf("the permissions section repeats the Command Reference's paths:\n%s", pane)
+	}
+}
+
+// Vault answers a root token with the single word "root", which says nothing to
+// someone who does not know that.
+func TestARootTokenReadsAsEverything(t *testing.T) {
+	h := newHarness(t)
+	h.m.capabilities = []string{"root"}
+
+	if got := stripANSI(h.m.capabilityLabel()); got != "everything (root token)" {
+		t.Errorf("capabilityLabel for a root token = %q", got)
 	}
 }
 
@@ -181,7 +169,7 @@ func TestDenialReadsAsNothingRatherThanAsACapability(t *testing.T) {
 
 // The reverse lookup: which of this token's policies reaches this path, and
 // whether it does so by naming it or by covering it with a glob.
-func TestTheAccessSectionNamesThePolicyThatGrantsThePath(t *testing.T) {
+func TestThePermissionsSectionNamesThePolicyThatGrantsThePath(t *testing.T) {
 	h := newHarness(t)
 	h.resize(120, 60)
 	h.open("kv/app/prod/db")
@@ -190,9 +178,9 @@ func TestTheAccessSectionNamesThePolicyThatGrantsThePath(t *testing.T) {
 		t.Fatal("the token's own policy documents were never fetched")
 	}
 
-	pane := stripANSI(h.m.renderAccess(h.m.tree.current(), 110))
+	pane := stripANSI(h.m.renderPermissions(h.m.tree.current(), 110))
 	if !strings.Contains(pane, "granted by") {
-		t.Fatalf("the access section does not list what grants the path:\n%s", pane)
+		t.Fatalf("the permissions section does not list what grants the path:\n%s", pane)
 	}
 	// app-admin is on the fake token and covers kv/data/app/* with a glob.
 	if !strings.Contains(pane, "app-admin") {
@@ -210,7 +198,7 @@ func TestAPathNoReadablePolicyNamesSaysSo(t *testing.T) {
 	h.resize(120, 60)
 	h.open("kv/platform/ci/token")
 
-	pane := stripANSI(h.m.renderAccess(h.m.tree.current(), 110))
+	pane := stripANSI(h.m.renderPermissions(h.m.tree.current(), 110))
 	if !strings.Contains(pane, "none of this token") {
 		t.Errorf("an unexplained path should say the lookup found nothing:\n%s", pane)
 	}
@@ -623,7 +611,7 @@ func TestFilterKeepsAncestorsOfAMatch(t *testing.T) {
 	}
 }
 
-// The access section is two claims side by side: the server's verdict, and the
+// The permissions section is two claims side by side: the server's verdict, and the
 // policies explaining it. A policy vivi could not parse makes the second one
 // incomplete, and the panel has to say which half is missing.
 func TestTheAccessPanelNamesAPolicyItCouldNotRead(t *testing.T) {

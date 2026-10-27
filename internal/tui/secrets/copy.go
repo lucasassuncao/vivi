@@ -84,6 +84,11 @@ func (m *Model) CopyRows(ctx ui.Context) []ui.CopyRow {
 	if n.parent != nil {
 		rows = append(rows, cmdRow("list", listCommand(n.parent)))
 	}
+	// The path a policy names for the history, the metadata and delete. Last, so
+	// a short panel gives it up before the commands.
+	if p := app.MetadataPolicyPath(n.mount, n.path, n.kvVersion); p != "" {
+		rows = append(rows, addrRow("policy-meta", p))
+	}
 	return rows
 }
 

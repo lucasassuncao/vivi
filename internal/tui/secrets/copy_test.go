@@ -191,3 +191,26 @@ func TestCopyFromTheDetailPaneTakesOneField(t *testing.T) {
 		t.Errorf("copied %q, want the value of %q (%q)", got, key, want)
 	}
 }
+
+// A policy naming the browsing path of a v2 secret grants nothing, silently.
+// vivi already resolved the mount's KV version, so it can state both paths.
+func TestTheRowsNameThePathsAPolicyHasToGrant(t *testing.T) {
+	h := newHarness(t)
+	h.open("kv/app/prod/db")
+
+	rows := map[string]string{}
+	for _, r := range h.copyRows() {
+		rows[r.Label] = r.Text
+	}
+	if rows["policy-path"] != "kv/data/app/prod/db" || rows["policy-meta"] != "kv/metadata/app/prod/db" {
+		t.Errorf("the rows do not name both policy paths: %v", rows)
+	}
+
+	// A v1 mount has no data/ segment and no metadata to grant.
+	h.open("legacy/old/app")
+	for _, r := range h.copyRows() {
+		if r.Label == "policy-meta" || strings.Contains(r.Text, "/data/") {
+			t.Errorf("a v1 mount was given a v2 path: %s %s", r.Label, r.Text)
+		}
+	}
+}

@@ -127,7 +127,7 @@ func (m *Model) renderSecretDetail(width int) string {
 	b.WriteString(m.renderVersions(width))
 	b.WriteString(m.renderMetadata(width))
 	b.WriteString(m.renderCustomMetadata(width))
-	b.WriteString(m.renderAccess(n, width))
+	b.WriteString(m.renderPermissions(n, width))
 	return b.String()
 }
 
@@ -335,32 +335,20 @@ func kvLabel(v int) string {
 	}
 }
 
-// renderAccess answers the two questions an auditing browser is opened to ask:
-// what may I do here, and which policy is responsible. Different in kind - the
-// capabilities line is the server's verdict, the grants a partial explanation.
-func (m *Model) renderAccess(n *node, width int) string {
+// renderPermissions answers what this token may do here and which policy says
+// so. The first is the server's verdict, the second a partial explanation. The
+// paths a policy has to name are in the Command Reference, with the commands.
+func (m *Model) renderPermissions(n *node, width int) string {
 	if n == nil || n.kind != kindSecret {
 		return ""
 	}
 
 	var b strings.Builder
 	b.WriteString("\n")
-	b.WriteString(m.st.Heading("access", width))
+	b.WriteString(m.st.Heading("permissions", width))
 	b.WriteString("\n")
-
-	rows := [][2]string{{"you may", m.capabilityLabel()}}
-
-	// The policy path is the reason this section pays for itself. On a v2 mount
-	// it is not the path in the panel title, and a policy naming the title
-	// grants nothing at all - silently.
-	rows = append(rows, [2]string{"policy path", app.PolicyPath(n.mount, n.path, n.kvVersion)})
-	if p := app.MetadataPolicyPath(n.mount, n.path, n.kvVersion); p != "" {
-		rows = append(rows, [2]string{"metadata path", p})
-	}
-	for _, r := range rows {
-		b.WriteString(draw.Cut("  "+m.st.Key.Render(fmt.Sprintf("%-16s ", r[0]))+draw.Sanitize(r[1]), width))
-		b.WriteString("\n")
-	}
+	b.WriteString(draw.Cut("  "+m.st.Key.Render(fmt.Sprintf("%-16s ", "this token can"))+draw.Sanitize(m.capabilityLabel()), width))
+	b.WriteString("\n")
 
 	b.WriteString(m.renderGrants(n, width))
 	return b.String()
@@ -373,6 +361,9 @@ func (m *Model) capabilityLabel() string {
 		return m.st.Dim.Render("unknown (" + humanize(m.capsErr) + ")")
 	case len(m.capabilities) == 0:
 		return m.st.Dim.Render("…")
+	case m.isRootToken():
+		// Vault answers a root token with the single word "root".
+		return "everything (root token)"
 	case len(m.capabilities) == 1 && m.capabilities[0] == "deny":
 		// Vault's own word for "nothing", and it reads as a capability rather
 		// than as the absence of every capability.
@@ -404,7 +395,7 @@ func (m *Model) renderGrants(n *node, width int) string {
 	b.WriteString("\n")
 
 	// "root" is a policy with no document, so no rule will ever name the path.
-	// Saying "none grants it" beside a "you may root" line reads as a denial.
+	// Saying "none grants it" beside "everything (root token)" reads as a denial.
 	if m.isRootToken() {
 		b.WriteString(m.st.Dim.Render("    (root bypasses policy: no rule needs to name it)\n"))
 		return b.String()

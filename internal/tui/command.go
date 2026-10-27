@@ -202,7 +202,7 @@ var commands = []command{
 // not available here instead of reading as a typo. A name missing from it costs
 // a worse error message and nothing else.
 var copyRowNames = []string{
-	"copy-path", "copy-policy-path", // the addresses
+	"copy-path", "copy-policy-path", "copy-policy-meta", // the addresses
 	"copy-read-command", "copy-field-command", "copy-version-command",
 	"copy-metadata-command", "copy-list-command",
 	"copy-name", // policies

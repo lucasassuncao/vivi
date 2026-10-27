@@ -89,7 +89,7 @@ Every action above also has a name. `:` opens a command line listing what can ru
 
 ## The detail pane
 
-The right column is two panels. The top one is the detail; the `Command Reference` panel under it prints the address of whatever the cursor is on and the `vault` commands that reach it: the plain read, the policy path a rule has to name to grant it, the `-field` form that prints one value with no JSON around it, the `-version` form while a historical version is open, the metadata read, and the listing of the folder it sits in. Nothing there is a secret value: paths and commands only, so it can stay on screen while values stay masked above it.
+The right column is two panels. The top one is the detail; the `Command Reference` panel under it prints the address of whatever the cursor is on and the `vault` commands that reach it: the plain read, the policy path a rule has to name to grant it, the `-field` form that prints one value with no JSON around it, the `-version` form while a historical version is open, the metadata read, the listing of the folder it sits in, and the policy path a rule has to name to grant the history and metadata. Nothing there is a secret value: paths and commands only, so it can stay on screen while values stay masked above it.
 
 The panel takes a fixed share of the column (about a fifth, never less than its six rows and never more than half) rather than the height of whatever it happens to hold. Sized to its contents it moved every time the cursor did, and the detail panel above it resized with it.
 
