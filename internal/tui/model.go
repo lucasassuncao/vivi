@@ -87,6 +87,10 @@ type Options struct {
 	// Debug is where keystrokes are recorded, when VIVI_DEBUG named a file.
 	// Nil is the ordinary session, which records nothing.
 	Debug io.Writer
+
+	// NoMouse leaves the mouse to the terminal, as --no-mouse asks: no clicks
+	// or wheel here, and text selects without shift.
+	NoMouse bool
 }
 
 // Model is the bubbletea model for vivi.
@@ -135,6 +139,9 @@ type Model struct {
 	refHidden bool
 	refSlide  animation.Tween
 
+	// noMouse is --no-mouse: the terminal keeps the mouse.
+	noMouse bool
+
 	// bannerCmds are the expiry timers of banners set during this Update, so
 	// a handler that has no command to return still gets its banner cleared.
 	bannerCmds []tea.Cmd
@@ -169,6 +176,7 @@ func New(opts Options) *Model {
 		readOnly:    opts.ReadOnly,
 		version:     opts.Version,
 		debug:       opts.Debug,
+		noMouse:     opts.NoMouse,
 	}
 
 	// The tabs that reach a server are built here and not in the literal: each
@@ -305,6 +313,9 @@ func (m *Model) update(msg tea.Msg) tea.Cmd {
 
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
+
+	case tea.MouseMsg:
+		return m.mouse(msg)
 
 	case animation.FrameMsg:
 		// The panel's own frames; any other is the shell's, below.

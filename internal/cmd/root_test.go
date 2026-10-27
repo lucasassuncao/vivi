@@ -50,3 +50,11 @@ func TestStartupClearsAStaleOldBinary(t *testing.T) {
 		t.Error("startup did not clear a leftover .old binary")
 	}
 }
+
+// The mouse is on unless --no-mouse says otherwise.
+func TestTheMouseIsOnUnlessNoMouse(t *testing.T) {
+	f := NewRootCmd().Flags().Lookup("no-mouse")
+	if f == nil || f.DefValue != "false" {
+		t.Fatalf("--no-mouse is missing or not off by default: %+v", f)
+	}
+}

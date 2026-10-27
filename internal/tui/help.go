@@ -35,6 +35,9 @@ func (m *Model) renderHelp(bodyHeight int) string {
 		{":", "every command, with its key"},
 		{"?", "this panel   ·   q quit"},
 	}}
+	if !m.noMouse {
+		meta.Rows = append(meta.Rows, [2]string{"shift+drag", "select text: without shift the mouse is vivi's"})
+	}
 
 	sections := []ui.HelpSection{m.contextHelp()}
 	// The write keys stay listed below. This panel is the complete reference,

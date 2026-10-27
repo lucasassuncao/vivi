@@ -88,13 +88,15 @@ Every action above also has a name. `:` opens a command line listing what can ru
 
 [COMMANDS.md](COMMANDS.md) is the full reference.
 
+The mouse does what the keys already do. A click on a tab switches to it; on a row it moves the cursor there, and on the row already under the cursor it does what `enter` does; on a field in the detail pane it selects that field for `r` and `y`; on a line of the Command Reference it copies that line. The wheel scrolls the pane under the pointer. While a confirmation, the editor or the version list is up, the mouse does nothing: those take the keyboard, and the mouse stands aside with it.
+
 ## The detail pane
 
 The right column is two panels. The top one is the detail; the `Command Reference` panel under it prints the address of whatever the cursor is on and the `vault` commands that reach it: the plain read, the policy path a rule has to name to grant it, the `-field` form that prints one value with no JSON around it, the `-version` form while a historical version is open, the metadata read, the listing of the folder it sits in, and the policy path a rule has to name to grant the history and metadata. Nothing there is a secret value: paths and commands only, so it can stay on screen while values stay masked above it.
 
 The panel takes a fixed share of the column (about a fifth, never less than its six rows and never more than half) rather than the height of whatever it happens to hold. Sized to its contents it moved every time the cursor did, and the detail panel above it resized with it.
 
-It is named for what it holds rather than for a key, and it was not always. The title read `Copy` while `Y` and `C` were the keys that copied the path and the command to the clipboard and showed you neither, so the only way to check what you had was to paste it somewhere. Both keys are gone, and printing the lines instead makes them readable and selectable with the mouse. Nothing in the panel is copied for you: the one key that still copies, `y`, acts on the panel above, so a title promising an action no key there performs had outlived what it described. Each line does have a command that copies it (`:copy-path`, `:copy-read-command` and the rest, generated from whatever the panel is showing) for putting one on the clipboard in one go, which a mouse selection cannot do over ssh.
+It is named for what it holds rather than for a key, and it was not always. The title read `Copy` while `Y` and `C` were the keys that copied the path and the command to the clipboard and showed you neither, so the only way to check what you had was to paste it somewhere. Both keys are gone, and printing the lines instead makes them readable. A click on a line copies it, and each line also has a command that copies it (`:copy-path`, `:copy-read-command` and the rest, generated from whatever the panel is showing). vivi takes the mouse to read those clicks, so selecting text by dragging needs `shift` held in most terminals. The panel's bottom edge says so, and so does `?`. `vivi --no-mouse` leaves the mouse to the terminal instead: no clicks and no wheel, and text selects as it always does.
 
 `c` puts the panel away when the detail needs the rows, sliding it out, and brings it back the same way. It stays away for the rest of the session, on every tab.
 

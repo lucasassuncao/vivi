@@ -366,3 +366,45 @@ func (m *Model) CopyRows(ui.Context) []ui.CopyRow {
 		{Label: "list", Text: "vault auth list", IsCommand: true},
 	}
 }
+
+// ClickList moves to the method or role clicked, the rows RenderList draws: a
+// method, then the roles of the one under the cursor. On the selected row it
+// does what enter does.
+func (m *Model) ClickList(y, _ int, ctx ui.Context) tea.Cmd {
+	row := 0
+	for i := range m.methods {
+		if row == y {
+			return m.clickMethod(i, ctx)
+		}
+		row++
+		if i != m.methodCursor {
+			continue
+		}
+		for j := range m.roles[m.methods[i].Path] {
+			if row == y {
+				return m.clickRole(j, ctx)
+			}
+			row++
+		}
+	}
+	return nil
+}
+
+func (m *Model) clickMethod(i int, ctx ui.Context) tea.Cmd {
+	if i == m.methodCursor && !m.onRoles {
+		return m.Key(tea.KeyPressMsg{Code: tea.KeyEnter}, ctx)
+	}
+	m.onRoles = false
+	return tea.Batch(m.moveMethod(i-m.methodCursor), ui.Emit(ui.ScrollTopMsg{}))
+}
+
+func (m *Model) clickRole(j int, ctx ui.Context) tea.Cmd {
+	if m.onRoles && j == m.roleCursor {
+		return m.Key(tea.KeyPressMsg{Code: tea.KeyEnter}, ctx)
+	}
+	m.onRoles, m.roleCursor = true, j
+	return ui.Emit(ui.ScrollTopMsg{})
+}
+
+// ClickDetail does nothing: the method and role panes have nothing to select.
+func (m *Model) ClickDetail(int, ui.Context) tea.Cmd { return nil }

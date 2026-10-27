@@ -2,6 +2,7 @@ package secrets
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel/layout"
 	"github.com/lucasassuncao/bezel/legend"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
@@ -62,6 +63,42 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 		return m.keyDiff(mode.diff, msg)
 	}
 	return m.keySecrets(msg)
+}
+
+// ClickList is a click on row y of the tree, under the filter's line when it
+// has one: on a row it moves the cursor there, and on the row under it it does
+// what enter does. A section header or a spacer does nothing.
+func (m *Model) ClickList(y, height int, ctx ui.Context) tea.Cmd {
+	m.adopt(ctx)
+	m.ensureState()
+	if modeIs[filtering](m) || m.tree.filter != "" {
+		y, height = y-1, height-1
+	}
+	vis := m.tree.Visible()
+	i := layout.ScrollStart(m.tree.Cursor, len(vis), height) + y
+	switch {
+	case y < 0 || i >= len(vis) || m.tree.Nodes[vis[i]].node == nil:
+		return nil
+	case i == m.tree.Cursor:
+		return m.drain(m.keySecrets(tea.KeyPressMsg{Code: tea.KeyEnter}))
+	}
+	m.tree.moveTo(i)
+	return m.drain(m.onCursorMoved())
+}
+
+// ClickDetail selects the field on the line clicked, which r and y then act
+// on. Any other line of the document leaves the selection where it was.
+func (m *Model) ClickDetail(line int, ctx ui.Context) tea.Cmd {
+	m.adopt(ctx)
+	n := m.shownNode()
+	if !modeIs[browsing](m) || n == nil || n.kind != kindSecret || m.secret == nil || m.detailErr != nil {
+		return nil
+	}
+	if at := line - m.fieldsStartLine(); at >= 0 && at < len(m.sortedKeys()) {
+		m.fieldCursor = at
+		m.followFieldCursor()
+	}
+	return m.drain(nil)
 }
 
 // KeyDetail walks the fields of the secret on screen. The one under the cursor

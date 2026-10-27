@@ -113,6 +113,7 @@ It prints two tokens: `root`, and a demo token denied on `kv/restricted/` so you
 | `vivi --read-only=prod` | refuses them only where the badge says `PROD` |
 | `vivi --theme <name>` | renders with a named colour theme |
 | `vivi --list-themes` | lists the available themes |
+| `vivi --no-mouse` | leaves the mouse to the terminal: no clicks, and text selects without `shift` |
 | `vivi --version` | prints the version |
 | `vivi self-update` | installs the latest release from GitHub, checksum-verified |
 | `vivi self-update --list` | shows the available releases |
@@ -140,6 +141,8 @@ Navigation is arrow keys and `enter`, everywhere. Letters are only ever actions,
 | `e` | edit  ·  `a` create  ·  `d` delete |
 | `c` | hide or show the Command Reference |
 | `?` | every key for where you are |
+
+The mouse works too: click a tab, a row or a field, click a Command Reference line to copy it, and scroll with the wheel. To select text, hold `shift` while dragging, or start with `--no-mouse` to leave the mouse to the terminal.
 
 See [docs/KEYS.md](docs/KEYS.md) for the rest: the detail pane, the editor and how it types a new field, the version list, and why `b`, `u`, `D` and `M` are four different words.
 

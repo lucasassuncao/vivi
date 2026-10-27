@@ -181,3 +181,18 @@ func (m *Model) Blur()                {}
 // CopyRows is empty on purpose. The activity log is this session's own record.
 // There is no path on a server behind it, so there is nothing here to address.
 func (m *Model) CopyRows(ui.Context) []ui.CopyRow { return nil }
+
+// ClickList moves the cursor to the row clicked, or opens the one under it.
+func (m *Model) ClickList(y, height int, ctx ui.Context) tea.Cmd {
+	i := layout.ScrollStart(m.cursor, len(m.entries), height) + y
+	switch {
+	case y < 0 || i >= len(m.entries):
+		return nil
+	case i == m.cursor:
+		return m.Key(tea.KeyPressMsg{Code: tea.KeyEnter}, ctx)
+	}
+	return m.moveTo(i)
+}
+
+// ClickDetail does nothing: the entry has nothing to select.
+func (m *Model) ClickDetail(int, ui.Context) tea.Cmd { return nil }

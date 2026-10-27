@@ -72,7 +72,7 @@ Neutralising ANSI escapes and bidirectional overrides is still a *terminal* conc
 
 A tab used to be a file in one package, which bought navigability and nothing else: everything still saw everything, so a tab could reach into the parent's fields, and the boundary held only as long as nobody needed to cross it. As a package, a tab cannot see the parent at all. The Go import graph makes it so: the parent imports every tab, so a tab importing the parent would be a cycle the compiler refuses.
 
-What a tab is to the parent is the `Tab` interface in `tab.go`: what it loads, what it draws in each pane, what keys it takes, what its legend, help and Command Reference say, and what it floats over the panes. Every method there was a `switch m.tab` arm before it was a method. `tabAdapter` in `legend.go` turns a `Tab` into what bezel's shell asks for.
+What a tab is to the parent is the `Tab` interface in `tab.go`: what it loads, what it draws in each pane, what keys and clicks it takes, what its legend, help and Command Reference say, and what it floats over the panes. Every method there was a `switch m.tab` arm before it was a method. `tabAdapter` in `legend.go` turns a `Tab` into what bezel's shell asks for.
 
 Since a tab cannot write the parent, everything it wants from outside itself goes one of two ways:
 
@@ -99,6 +99,7 @@ What the parent and a tab both have to name lives in `ui`, because it can live i
 | `tab.go` | the `Tab` interface, and the last switch over the tabs, which is the dispatch table itself |
 | `update.go` | what the loop does with an answer: the token is the parent's, everything else is offered to the tabs |
 | `keys.go` | where a keystroke goes: the mode decides, then the tab |
+| `mouse.go` | where a click or the wheel goes: a tab, a row, a field, a Command Reference line |
 | `layout.go` | how the terminal is divided, decided without rendering anything, and the Command Reference sliding away on `c` |
 | `view.go` | the smallest terminal vivi draws into, and the frame |
 | `header.go` | the lines above the panes: which server this is, and how dangerous it is |

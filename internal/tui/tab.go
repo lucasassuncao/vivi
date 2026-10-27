@@ -24,6 +24,12 @@ type Tab interface {
 	Key(msg tea.KeyPressMsg, ctx ui.Context) tea.Cmd
 	Data(msg tea.Msg) tea.Cmd
 
+	// ClickList is a click on row y of the list pane, height rows tall: on a
+	// row it moves the cursor there, and on the row under it it does what enter
+	// does. ClickDetail is a click on line of the detail's whole document.
+	ClickList(y, height int, ctx ui.Context) tea.Cmd
+	ClickDetail(line int, ctx ui.Context) tea.Cmd
+
 	// KeyDetail is the tab's chance at a keystroke while the detail pane holds
 	// focus, reporting whether it took it. A pane with a list of its own walks
 	// that list; one holding a document lets the shell scroll it.

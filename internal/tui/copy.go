@@ -8,8 +8,8 @@ import (
 )
 
 // The reference panel is the bottom of the right column: the address of what
-// the cursor is on and the commands reaching it, printed so they are selectable
-// with the mouse. No secret value is here; "y" is still the only way one moves.
+// the cursor is on and the commands reaching it; a click on one copies it. No
+// secret value is here; "y" is still the only way one moves.
 //
 // What goes in it is each tab's answer. What is left here is the frame around
 // the answer; the clipboard write itself is bezel's shell.Copy.
@@ -18,6 +18,19 @@ import (
 // deciding whether there is a second panel at all. It read "Copy" until that
 // promised an action no key here performs: nothing is copied for you.
 const copyPanelTitle = "Command Reference"
+
+// copyPanelHint is on the panel's bottom edge: vivi takes the mouse, so the
+// terminal selects text only while shift is held, and this is where it is wanted.
+const copyPanelHint = "click copies · shift+drag selects"
+
+// copyPanelHint is the hint, or nothing under --no-mouse, where the terminal
+// selects as it always does and a click copies nothing.
+func (m *Model) copyPanelHint() string {
+	if m.noMouse {
+		return ""
+	}
+	return copyPanelHint
+}
 
 // copyRows is what the panel has to show for the tab in front of the user, or
 // nothing at all - which is a real answer, and the one that collapses the right

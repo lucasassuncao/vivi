@@ -317,3 +317,18 @@ func (m *Model) CopyRows(ui.Context) []ui.CopyRow {
 		{Label: "read", Text: "vault policy read " + name, IsCommand: true},
 	}
 }
+
+// ClickList moves the cursor to the row clicked, or reads the one under it.
+func (m *Model) ClickList(y, height int, ctx ui.Context) tea.Cmd {
+	i := layout.ScrollStart(m.cursor, len(m.names), height) + y
+	switch {
+	case y < 0 || i >= len(m.names):
+		return nil
+	case i == m.cursor:
+		return m.Key(tea.KeyPressMsg{Code: tea.KeyEnter}, ctx)
+	}
+	return m.move(i - m.cursor)
+}
+
+// ClickDetail does nothing: the document has nothing to select.
+func (m *Model) ClickDetail(int, ui.Context) tea.Cmd { return nil }

@@ -25,6 +25,9 @@ const (
 func (m *Model) View() tea.View {
 	v := tea.NewView(m.render())
 	v.AltScreen = true
+	if !m.noMouse {
+		v.MouseMode = tea.MouseModeCellMotion
+	}
 	return v
 }
 
@@ -71,7 +74,7 @@ func (m *Model) panes() map[string]shell.Pane {
 		paneDetail: {Title: draw.Sanitize(right), Body: func(layout.Rect) string { return m.detailView() }},
 	}
 	if m.sh.Rect(paneCopy) != (layout.Rect{}) {
-		panes[paneCopy] = shell.Pane{Title: copyPanelTitle, Body: func(r layout.Rect) string {
+		panes[paneCopy] = shell.Pane{Title: copyPanelTitle, Bottom: m.copyPanelHint(), Body: func(r layout.Rect) string {
 			return strings.Join(m.copyLines(r.W), "\n")
 		}}
 	}
