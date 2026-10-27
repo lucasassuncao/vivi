@@ -1,6 +1,7 @@
 package secrets
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -204,4 +205,23 @@ func TestDestroySecretIsNotOfferedOnKV1(t *testing.T) {
 func (h *harness) currentVersionReadable() bool {
 	v := h.m.currentVersionInfo()
 	return v != nil && v.Readable()
+}
+
+// The boxes are for marking: idle under the detail they read as something to
+// click, so they show only while the version list is open.
+func TestTheVersionBoxesShowOnlyWhileMarking(t *testing.T) {
+	h := newHarness(t)
+	h.open("kv/app/prod/db")
+
+	if pane := stripANSI(h.m.renderVersions(100)); strings.Contains(pane, "[ ]") {
+		t.Errorf("the boxes show with the list closed:\n%s", pane)
+	}
+	h.press("v")
+	if pane := stripANSI(h.m.renderVersions(100)); !strings.Contains(pane, "[ ] v") {
+		t.Errorf("the open list has no boxes to mark:\n%s", pane)
+	}
+	h.press("space")
+	if pane := stripANSI(h.m.renderVersions(100)); !strings.Contains(pane, "[×] v") {
+		t.Errorf("a marked version is not ticked:\n%s", pane)
+	}
 }

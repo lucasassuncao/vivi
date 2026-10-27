@@ -170,9 +170,14 @@ func (m *Model) renderVersions(width int) string {
 		if modeIs[choosingVersion](m) && i == m.versionCursor {
 			cursor = m.st.Cursor.Render("› ")
 		}
-		mark := " "
-		if m.marked[v.Version] {
-			mark = "×"
+		// The boxes are for marking, so they show only while the list is open.
+		mark := ""
+		switch {
+		case !modeIs[choosingVersion](m):
+		case m.marked[v.Version]:
+			mark = "[×] "
+		default:
+			mark = "[ ] "
 		}
 
 		state := ""
@@ -187,7 +192,7 @@ func (m *Model) renderVersions(width int) string {
 			state = m.st.Badge.Render(" ✓ current ")
 		}
 
-		line := fmt.Sprintf("%s[%s] v%-3d %s  %s",
+		line := fmt.Sprintf("%s%sv%-3d %s  %s",
 			cursor, mark, v.Version, v.CreatedTime.Format("2006-01-02 15:04"), state)
 		b.WriteString(draw.Cut(line, width))
 		b.WriteString("\n")

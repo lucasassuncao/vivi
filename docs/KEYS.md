@@ -140,7 +140,7 @@ The pair worth reading twice is `D` and `M`. "Destroy" sounds like the end of th
 │ ●     app        ← still here    ││ this version was deleted or destroyed
 │       types                      ││
 │                                  ││ VERSIONS
-│                                  ││   [ ] v1  2026-08-27 00:36  ✗ destroyed
+│                                  ││   v1    2026-08-27 00:36  ✗ destroyed
 ```
 
 Only `M` removes the metadata, and so only `M` makes the path disappear. The same holds at the CLI, which is the quickest way to convince yourself:
