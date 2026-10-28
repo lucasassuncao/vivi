@@ -113,6 +113,7 @@ It prints two tokens: `root`, and a demo token denied on `kv/restricted/` so you
 | `vivi --read-only=prod` | refuses them only where the badge says `PROD` |
 | `vivi --theme <name>` | renders with a named colour theme |
 | `vivi --list-themes` | lists the available themes |
+| `vivi --no-motion` | turns the animations off: everything changes at once |
 | `vivi --no-mouse` | leaves the mouse to the terminal: no clicks, and text selects without `shift` |
 | `vivi --version` | prints the version |
 | `vivi self-update` | installs the latest release from GitHub, checksum-verified |

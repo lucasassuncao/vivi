@@ -116,7 +116,7 @@ func (m *Model) renderSecretDetail(width int) string {
 		if m.revealed[k] {
 			// Sanitized here and not in valueToString, which also feeds the
 			// editor and the clipboard: those two must see the real bytes.
-			value = m.st.Warn.Render("◉ ") + draw.Sanitize(valueToString(m.secret.Data[k]))
+			value = m.st.Warn.Render("◉ ") + m.revealedValue(k)
 		}
 
 		line := cursor + m.st.Key.Render(fmt.Sprintf("%-16s ", draw.Sanitize(k))) + value
@@ -206,12 +206,20 @@ func (m *Model) renderVersions(width int) string {
 			state = m.st.Badge.Render(" ✓ current ")
 		}
 
-		line := fmt.Sprintf("%s%sv%-3d %s  %s",
-			cursor, mark, v.Version, v.CreatedTime.Format("2006-01-02 15:04"), state)
+		label := versionLabel(v)
+		if gone(v) {
+			label = m.struck(v) // the state beside it still says which
+		}
+		line := fmt.Sprintf("%s%s%s  %s", cursor, mark, label, state)
 		b.WriteString(draw.Cut(line, width))
 		b.WriteString("\n")
 	}
 	return b.String()
+}
+
+// versionLabel is a version row's number and date, what a strike crosses out.
+func versionLabel(v vault.VersionInfo) string {
+	return fmt.Sprintf("v%-3d %s", v.Version, v.CreatedTime.Format("2006-01-02 15:04"))
 }
 
 func (m *Model) renderMetadata(width int) string {
@@ -464,8 +472,7 @@ func (m *Model) keySecrets(msg tea.KeyPressMsg) tea.Cmd {
 		m.filterInput, cmd = m.filterInput.Focus()
 		return cmd
 	case "r":
-		m.revealCurrentField()
-		return nil
+		return m.revealCurrentField()
 	case "y":
 		// Y and C used to copy the path and the vault command. The copy panel
 		// prints both now, so the keys were spending two letters on something
@@ -598,19 +605,24 @@ func (m *Model) selectSecret(n *node, version int) tea.Cmd {
 
 // settleSecret puts a finished load on screen. Called wherever an answer lands,
 // so the swap happens on whichever of the three arrives last.
-func (m *Model) settleSecret() {
+func (m *Model) settleSecret() tea.Cmd {
 	if m.loading != nil && m.loading.settled() {
-		m.commitSecret()
+		return m.commitSecret()
 	}
+	return nil
 }
 
 // commitSecret moves a load onto the screen, all of it in one assignment. The
 // only place the pane's state changes, which is what makes it atomic: no frame
 // has one secret's fields beside another's version list.
-func (m *Model) commitSecret() {
+func (m *Model) commitSecret() tea.Cmd {
 	l := m.loading
 	if l == nil {
-		return
+		return nil
+	}
+	was := m.versions
+	if l.node != m.sel {
+		was = nil // another secret: nothing of it was on screen to strike
 	}
 
 	m.sel = l.node
@@ -621,9 +633,11 @@ func (m *Model) commitSecret() {
 	m.fieldCursor = 0
 	m.revealed = map[string]bool{}
 	m.marked = map[int]bool{}
+	m.stopMotion()
 	m.scrollTop()
 
 	m.loading = nil
+	return m.strikeGone(was)
 }
 
 // shownNode is the node the detail pane is drawing: the one under the cursor,
@@ -693,7 +707,14 @@ func (m *Model) moveField(delta int) {
 // revealCurrentField unmasks one value. The reveal is scoped to this field and
 // this secret: selecting another secret clears the map, so nothing stays
 // exposed on screen after the user has moved on.
-func (m *Model) revealCurrentField() {
+func (m *Model) revealCurrentField() tea.Cmd {
+	before := maps.Clone(m.revealed)
+	m.toggleReveal()
+	return m.scrambleRevealed(before)
+}
+
+// toggleReveal shows or hides what the focus scopes the reveal to.
+func (m *Model) toggleReveal() {
 	keys := m.sortedKeys()
 	if len(keys) == 0 {
 		return

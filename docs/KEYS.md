@@ -88,6 +88,8 @@ Every action above also has a name. `:` opens a command line listing what can ru
 
 [COMMANDS.md](COMMANDS.md) is the full reference.
 
+A few keys show what they did where they did it: `r` decodes a value as it reveals it, a version that is deleted or destroyed is struck through (and stays struck, beside `⌫ deleted` or `✗ destroyed`), and a confirmation that asked for the path shakes when what was typed is not it. `vivi --no-motion` turns all of it off.
+
 The mouse does what the keys already do. A click on a tab switches to it; on a row it moves the cursor there, and on the row already under the cursor it does what `enter` does; on a field in the detail pane it selects that field for `r` and `y`; on a line of the Command Reference it copies that line. The wheel scrolls the pane under the pointer. While a confirmation, the editor or the version list is up, the mouse does nothing: those take the keyboard, and the mouse stands aside with it.
 
 ## The detail pane

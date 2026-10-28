@@ -161,6 +161,9 @@ func (m *Model) keyConfirm(c *confirmation, msg tea.KeyPressMsg) tea.Cmd {
 			m.mode = browsing{}
 			return dispatch(accepted)
 		}
+		if c.needsInput() {
+			return m.shakeRefusal() // the typed path is not the one asked for
+		}
 		return nil
 	case "y", "Y":
 		// A typed confirmation must not be satisfiable by a single key.

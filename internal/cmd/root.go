@@ -50,6 +50,17 @@ func moduleVersion() string {
 	return info.Main.Version
 }
 
+// noMotionEnvVar is bezel's switch for its animations, which --no-motion sets.
+const noMotionEnvVar = "BEZEL_NO_MOTION"
+
+// setNoMotion makes the flag the only switch for bezel's animations.
+func setNoMotion(off bool) error {
+	if off {
+		return os.Setenv(noMotionEnvVar, "1")
+	}
+	return os.Unsetenv(noMotionEnvVar)
+}
+
 // NewRootCmd builds the command tree.
 func NewRootCmd() *cobra.Command {
 	var (
@@ -57,6 +68,7 @@ func NewRootCmd() *cobra.Command {
 		listThemes bool
 		readOnly   string
 		noMouse    bool
+		noMotion   bool
 	)
 
 	root := &cobra.Command{
@@ -71,6 +83,12 @@ VAULT_NAMESPACE, and has no configuration of its own.`,
 		SilenceErrors: true,
 		Args:          cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			// bezel reads motion from the environment, so the flag decides it
+			// before anything animates, the theme browser included: set with
+			// it, cleared without, so a value from the shell has no say.
+			if err := setNoMotion(noMotion); err != nil {
+				return err
+			}
 			if listThemes {
 				return themebrowser.BrowseInTerminal()
 			}
@@ -92,6 +110,7 @@ VAULT_NAMESPACE, and has no configuration of its own.`,
 	root.Flags().StringVar(&readOnly, "read-only", "", `refuse every write: "on" always, "prod" only when the server is not a recognised sandbox, "off" never (also read from `+ReadOnlyEnvVar+")")
 	// A bare --read-only is the obvious spelling and has to mean the obvious, without this it would consume the next argument as its value.
 	root.Flags().Lookup("read-only").NoOptDefVal = "on"
+	root.Flags().BoolVar(&noMotion, "no-motion", false, "turn the animations off: values, versions and confirmations change at once")
 	root.Flags().BoolVar(&noMouse, "no-mouse", false, "leave the mouse to the terminal: no clicks or wheel, and text selects without shift")
 
 	root.SetVersionTemplate("vivi {{.Version}}\n")

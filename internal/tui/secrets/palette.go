@@ -64,8 +64,7 @@ func (m *Model) CurrentVersion() *vault.VersionInfo { return m.currentVersionInf
 
 func (m *Model) RevealCurrentField(ctx ui.Context) tea.Cmd {
 	m.adopt(ctx)
-	m.revealCurrentField()
-	return m.drain(nil)
+	return m.drain(m.revealCurrentField())
 }
 
 func (m *Model) CopyCurrentValue(ctx ui.Context) tea.Cmd {

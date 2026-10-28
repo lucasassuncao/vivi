@@ -2,6 +2,7 @@ package secrets
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel/animation/text"
 	"github.com/lucasassuncao/bezel/component/input"
 	"github.com/lucasassuncao/bezel/theme"
 	"github.com/lucasassuncao/vivi/internal/app"
@@ -85,6 +86,12 @@ type Model struct {
 	capsNode     *node
 	fieldCursor  int
 	revealed     map[string]bool
+
+	// What is moving: a revealed value settling, a version being struck, the
+	// confirmation refusing what was typed. See motion.go.
+	scrambles map[string]text.Scramble
+	strikes   map[int]text.Strike
+	shake     text.Shake
 
 	versionCursor int
 	marked        map[int]bool
@@ -237,6 +244,12 @@ func (m *Model) ensureState() {
 	}
 	if m.revealed == nil {
 		m.revealed = map[string]bool{}
+	}
+	if m.scrambles == nil {
+		m.scrambles = map[string]text.Scramble{}
+	}
+	if m.strikes == nil {
+		m.strikes = map[int]text.Strike{}
 	}
 	if m.diffRevealed == nil {
 		m.diffRevealed = map[string]bool{}

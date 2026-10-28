@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel/animation"
 	"github.com/lucasassuncao/vivi/internal/vault"
 )
 
@@ -56,16 +57,14 @@ func (m *Model) handleData(msg tea.Msg) tea.Cmd {
 		}
 		m.loading.secret, m.loading.err = msg.secret, msg.err
 		m.loading.readVersion, m.loading.gotRead = msg.version, true
-		m.settleSecret()
-		return nil
+		return m.settleSecret()
 
 	case capabilitiesMsg:
 		if m.staleAnswer(msg.node) {
 			return nil
 		}
 		m.loading.caps, m.loading.capsErr, m.loading.gotCaps = msg.caps, msg.err, true
-		m.settleSecret()
-		return nil
+		return m.settleSecret()
 
 	case policyDocMsg:
 		// A policy the token names but cannot read is normal and is not a
@@ -86,8 +85,7 @@ func (m *Model) handleData(msg tea.Msg) tea.Cmd {
 			// the zero values already say it.
 			m.loading.versions, m.loading.meta = msg.versions, msg.meta
 		}
-		m.settleSecret()
-		return nil
+		return m.settleSecret()
 
 	case writeMsg:
 		return m.afterWrite(msg)
@@ -103,6 +101,9 @@ func (m *Model) handleData(msg tea.Msg) tea.Cmd {
 
 	case diffMsg:
 		return m.afterDiff(msg)
+
+	case animation.FrameMsg:
+		return m.animate(msg)
 	}
 
 	return m.handleConfirmed(msg)

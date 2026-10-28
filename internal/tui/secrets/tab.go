@@ -208,6 +208,9 @@ func (m *Model) Overlay(ctx ui.Context) string {
 		if mode.confirmation == nil {
 			return ""
 		}
+		if m.shake.Active() {
+			return m.shake.View(m.renderModal(mode.confirmation, m.height))
+		}
 		return m.renderModal(mode.confirmation, m.height)
 	case editing:
 		// The table is a pane, drawn by this tab; only the form floats.
