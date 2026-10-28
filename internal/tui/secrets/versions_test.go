@@ -225,3 +225,44 @@ func TestTheVersionBoxesShowOnlyWhileMarking(t *testing.T) {
 		t.Errorf("a marked version is not ticked:\n%s", pane)
 	}
 }
+
+// After M the cursor goes up to the folder, which the pane shows at once: left
+// where it was it fell on a sibling nobody read, and the pane said loading for
+// good. The toast says what happened, not the endpoint's name.
+func TestDestroyingASecretLeavesTheCursorOnItsFolder(t *testing.T) {
+	h := newHarness(t)
+	h.open("kv/app/prod/db")
+
+	h.press("M")
+	h.typeText("db")
+	h.press("enter")
+
+	if got := h.m.CursorPath(); got != "kv/app/prod" {
+		t.Errorf("the cursor is on %q, want the folder the secret was in", got)
+	}
+	if strings.Contains(h.view(), "loading") {
+		t.Errorf("the pane is waiting on something:\n%s", h.view())
+	}
+	if got := h.banner(); got != "destroyed kv/app/prod/db and its history" {
+		t.Errorf("the toast says %q", got)
+	}
+}
+
+// Every operation reads as what it did, and a failure as what it could not do.
+func TestOperationsReadAsWhatTheyDid(t *testing.T) {
+	for _, tc := range []struct {
+		op          string
+		kv1         bool
+		done, doing string
+	}{
+		{"delete", false, "soft-deleted a/b", "soft-delete a/b"},
+		{"delete", true, "deleted a/b for good", "delete a/b"},
+		{"undelete", false, "restored a/b", "restore a/b"},
+		{"destroy", false, "destroyed versions of a/b", "destroy versions of a/b"},
+		{"delete-metadata", false, "destroyed a/b and its history", "destroy a/b and its history"},
+	} {
+		if done, doing := opWords(tc.op, "a/b", tc.kv1); done != tc.done || doing != tc.doing {
+			t.Errorf("%s (kv1 %v) reads %q / %q", tc.op, tc.kv1, done, doing)
+		}
+	}
+}

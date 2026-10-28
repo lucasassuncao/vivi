@@ -92,10 +92,11 @@ func (m *Model) handleData(msg tea.Msg) tea.Cmd {
 
 	case opMsg:
 		m.record(msg.op, msg.path, "", msg.err)
+		done, doing := opWords(msg.op, msg.path, msg.node != nil && msg.node.kvVersion == vault.KV1)
 		if msg.err != nil {
-			return m.fail(msg.op+" "+msg.path, msg.err)
+			return m.fail("could not "+doing, msg.err)
 		}
-		m.notify(fmt.Sprintf("%s: %s", msg.op, msg.path))
+		m.notify(done)
 		m.marked = map[int]bool{}
 		return m.refreshSelection(msg.node, msg.op)
 
@@ -251,11 +252,31 @@ func (m *Model) refreshSelection(n *node, op string) tea.Cmd {
 		if n.parent == nil {
 			return nil
 		}
-		m.loading = nil
-		m.sel, m.secret, m.versions, m.meta = nil, nil, nil, nil
-		return m.reload(n.parent)
+		// The cursor goes up with it: left where it was it lands on a sibling
+		// nobody asked to read, and the pane waits on it for good.
+		cmd := m.reload(n.parent)
+		m.tree.selectNode(n.parent)
+		return tea.Batch(cmd, m.onCursorMoved())
 	}
 	return m.selectSecret(n, 0)
+}
+
+// opWords is what a version operation did and what it was doing, in words: the
+// op is the endpoint's name, which says nothing to whoever pressed the key.
+func opWords(op, path string, kv1 bool) (done, doing string) {
+	switch {
+	case op == "delete" && kv1:
+		return "deleted " + path + " for good", "delete " + path
+	case op == "delete":
+		return "soft-deleted " + path, "soft-delete " + path
+	case op == "undelete":
+		return "restored " + path, "restore " + path
+	case op == "destroy":
+		return "destroyed versions of " + path, "destroy versions of " + path
+	case op == "delete-metadata":
+		return "destroyed " + path + " and its history", "destroy " + path + " and its history"
+	}
+	return op + ": " + path, op + " " + path
 }
 
 // reload drops a node's listing and fetches it again. expand toggles, so the
