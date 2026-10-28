@@ -453,3 +453,16 @@ func TestTheLegendPutsTheActionsOnTheSecondRow(t *testing.T) {
 		})
 	}
 }
+
+// R refetches what the cursor is on in Secrets as it does on the other tabs,
+// and a folder's actions row is not left with create alone.
+func TestSecretsOffersReloadLikeTheOtherTabs(t *testing.T) {
+	h := newHarness(t)
+	h.open("kv/app/prod/db")
+	h.focus("kv/app/prod")
+
+	lines := h.m.legendLines(200)
+	if len(lines) != 2 || strings.TrimRight(stripANSI(lines[1]), " ") != "[a] create  [R] reload" {
+		t.Errorf("a folder's actions row is %q", lines)
+	}
+}

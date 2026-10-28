@@ -275,6 +275,10 @@ func (m *Model) actions(reveal, take, remove legend.Entry, inPane bool) []legend
 	if !inPane && m.SelectedVersioned() {
 		out = append(out, destroySecretLegend)
 	}
+	// R is the shell's, and here it refetches what the tree cursor is on.
+	if m.tree.current() != nil {
+		out = append(out, legend.New("R", "reload"))
+	}
 	return out
 }
 
