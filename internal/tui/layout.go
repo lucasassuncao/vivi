@@ -146,7 +146,7 @@ func (m *Model) toggleReference() tea.Cmd {
 	if !m.refHidden {
 		to = m.copyPanelRoom()
 	}
-	m.refSlide = animation.New(from, to, referenceSlide)
+	m.refSlide = animation.NewTween(from, to, referenceSlide)
 	return m.refSlide.Tick()
 }
 

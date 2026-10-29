@@ -451,7 +451,7 @@ func (m *Model) keySecrets(msg tea.KeyPressMsg) tea.Cmd {
 		m.tree.moveTo(0)
 		return m.onCursorMoved()
 	case "end":
-		m.tree.moveTo(len(m.tree.Nodes) - 1)
+		m.tree.moveTo(m.tree.Len() - 1)
 		return m.onCursorMoved()
 	case "right", "enter", " ":
 		// Both mean "further in": expanding a folder, or moving into the pane

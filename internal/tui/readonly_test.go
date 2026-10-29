@@ -26,7 +26,8 @@ func readOnlyHarness(t *testing.T, policy app.ReadOnlyPolicy) *harness {
 	}
 	m := New(Options{Client: srv, Token: token, Access: app.ReadOnly, ReadOnly: policy})
 	clip := &fakeClipboard{}
-	m.sh = m.sh.WithClipboard(clip.write)
+	m.clipboard = clip.write
+	m.sh = m.newShell()
 	h := &harness{t: t, m: m, server: srv, clip: clip}
 
 	h.m.Update(tea.WindowSizeMsg{Width: 120, Height: 44})

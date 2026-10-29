@@ -20,13 +20,13 @@ func TestCursorSkipsRowsThatAreNotNodes(t *testing.T) {
 	b := &node{kind: kindMount, name: "b", mount: "b"}
 
 	tr := &forest{}
-	tr.Nodes = []row{
+	tr.Model = tr.SetNodes([]row{
 		{kind: rowHeader, header: "FIRST"},
 		{kind: rowNode, node: a},
 		{kind: rowSpacer},
 		{kind: rowHeader, header: "SECOND"},
 		{kind: rowNode, node: b},
-	}
+	})
 
 	tr.moveTo(0)
 	if tr.current() != a {
@@ -43,7 +43,7 @@ func TestCursorSkipsRowsThatAreNotNodes(t *testing.T) {
 		t.Fatal("down at the end must stay on the last node")
 	}
 
-	tr.moveTo(len(tr.Nodes) - 1)
+	tr.moveTo(tr.Len() - 1)
 	if tr.current() != b {
 		t.Fatal("end should land on the last node")
 	}
@@ -66,7 +66,7 @@ func TestSingleGroupRendersNoHeader(t *testing.T) {
 	if tr.grouped {
 		t.Fatal("a single section must not be grouped")
 	}
-	for i, r := range tr.Nodes {
+	for i, r := range tr.Nodes() {
 		if r.kind != rowNode {
 			t.Fatalf("row %d is furniture in a single-section tree: %+v", i, r)
 		}
@@ -214,7 +214,7 @@ func TestMountsAreLabelledWithTheirEngine(t *testing.T) {
 
 func TestCursorNeverLandsOnAGroupHeader(t *testing.T) {
 	h := newHarness(t)
-	steps := len(h.m.tree.Nodes) + 2
+	steps := h.m.tree.Len() + 2
 
 	for i := 0; i < steps; i++ {
 		if h.m.tree.current() == nil {
@@ -333,7 +333,7 @@ func TestNotBrowsableStillSaysSo(t *testing.T) {
 func TestALoadingRowIsTheSameWidthAsAnIdleOne(t *testing.T) {
 	h := newHarness(t)
 	var n *node
-	for _, r := range h.m.tree.Nodes {
+	for _, r := range h.m.tree.Nodes() {
 		if r.node != nil {
 			n = r.node
 			break

@@ -160,7 +160,7 @@ func (t *forest) setMounts(mounts []vault.Mount) {
 			desc:      m.Description,
 		})
 	}
-	t.Cursor = 0
+	t.Model = t.SetNodes(nil) // a new listing starts at the top
 	t.reflow()
 }
 
@@ -230,7 +230,7 @@ func mountGroup(n *node) int {
 // under one header per non-empty section. A lone section gets no header: it
 // separates nothing from nothing.
 func (t *forest) reflow() {
-	t.Nodes = t.Nodes[:0]
+	var all []row
 
 	groups := make([][]row, len(groupLabels))
 	filled := 0
@@ -252,16 +252,16 @@ func (t *forest) reflow() {
 			continue
 		}
 		if t.grouped {
-			if len(t.Nodes) > 0 {
-				t.Nodes = append(t.Nodes, row{kind: rowSpacer})
+			if len(all) > 0 {
+				all = append(all, row{kind: rowSpacer})
 			}
-			t.Nodes = append(t.Nodes, row{kind: rowHeader, header: groupLabels[g]})
+			all = append(all, row{kind: rowHeader, header: groupLabels[g]})
 		}
-		t.Nodes = append(t.Nodes, rows...)
+		all = append(all, rows...)
 	}
 
 	// The cursor stays where it was, or on the nearest node past a heading.
-	t.Model = t.ClampCursor().MoveTo(t.Cursor)
+	t.Model = t.SetNodes(all).MoveTo(t.Cursor())
 }
 
 // appendRows flattens a node and its loaded descendants onto out. The bezel
@@ -300,7 +300,7 @@ func (t *forest) current() *node {
 	if idx < 0 {
 		return nil
 	}
-	return t.Nodes[idx].node
+	return t.Node(idx).node
 }
 
 // move walks delta nodes, stepping over the rows that are not nodes.
@@ -420,15 +420,15 @@ func (m *Model) renderTree(width, height int) string {
 	}
 
 	vis := m.tree.Visible()
-	start := layout.ScrollStart(m.tree.Cursor, len(vis), height)
+	start := layout.ScrollStart(m.tree.Cursor(), len(vis), height)
 	for i := start; i < len(vis) && i < start+height; i++ {
-		switch r := m.tree.Nodes[vis[i]]; r.kind {
+		switch r := m.tree.Node(vis[i]); r.kind {
 		case rowHeader:
 			b.WriteString(draw.Cut(m.st.GroupLabel.Render(r.header), width))
 		case rowSpacer:
 			// The blank line is the row; there is nothing to draw on it.
 		default:
-			b.WriteString(m.renderTreeRow(r.node, i == m.tree.Cursor, width, !m.tree.grouped))
+			b.WriteString(m.renderTreeRow(r.node, i == m.tree.Cursor(), width, !m.tree.grouped))
 		}
 		b.WriteString("\n")
 	}

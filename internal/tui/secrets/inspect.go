@@ -66,8 +66,8 @@ func (m *Model) State() State {
 		Versions:      len(m.versions),
 		Revealed:      len(m.revealed),
 		Marked:        len(m.marked),
-		TreeRows:      len(m.tree.Nodes),
-		TreeCursor:    m.tree.Cursor,
+		TreeRows:      m.tree.Len(),
+		TreeCursor:    m.tree.Cursor(),
 		PendingGoto:   m.pendingGoto,
 	}
 	if m.sel != nil {
@@ -78,8 +78,8 @@ func (m *Model) State() State {
 
 // VisiblePaths is every node currently drawn in the tree, top to bottom.
 func (m *Model) VisiblePaths() []string {
-	out := make([]string, 0, len(m.tree.Nodes))
-	for _, r := range m.tree.Nodes {
+	out := make([]string, 0, m.tree.Len())
+	for _, r := range m.tree.Nodes() {
 		if r.kind == rowNode {
 			out = append(out, r.node.fullPath())
 		}
@@ -113,13 +113,13 @@ func (m *Model) MountPath(name string) string {
 func (m *Model) FocusPath(path string, ctx ui.Context) (tea.Cmd, bool) {
 	m.adopt(ctx)
 
-	for i, r := range m.tree.Nodes {
+	for i, r := range m.tree.Nodes() {
 		if r.kind != rowNode {
 			continue
 		}
 		n := r.node
 		if n.fullPath() == path || (n.kind != kindSecret && n.fullPath() == trimSlash(path)+"/") {
-			m.tree.Cursor = i
+			m.tree.moveTo(i)
 			return m.drain(m.onCursorMoved()), true
 		}
 	}

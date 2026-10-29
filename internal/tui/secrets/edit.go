@@ -405,7 +405,7 @@ func (m *Model) beginCreate() {
 		return
 	}
 
-	in := ui.NewInput(m.st.Shell()).WithPlaceholder("name").WithWidth(48)
+	in := ui.NewInput(m.st.Shell()).WithPlaceholder("name").SetWidth(48)
 
 	// The folder the name lands in, with one slash to join on: a mount's own
 	// path already ends in one, a directory's does not.

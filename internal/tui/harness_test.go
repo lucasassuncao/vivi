@@ -39,7 +39,8 @@ func newHarness(t *testing.T) *harness {
 
 	m := New(Options{Client: srv, Token: token})
 	clip := &fakeClipboard{}
-	m.sh = m.sh.WithClipboard(clip.write)
+	m.clipboard = clip.write
+	m.sh = m.newShell()
 	h := &harness{t: t, m: m, server: srv, clip: clip}
 
 	h.m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})

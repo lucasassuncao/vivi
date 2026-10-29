@@ -97,7 +97,10 @@ type Options struct {
 type Model struct {
 	ctx    context.Context
 	client vault.Client
-	st     ui.Styles
+	// clipboard is what copies write to; nil is the system's. Tests set it and
+	// rebuild the shell, which takes it in its Config.
+	clipboard func(string) error
+	st        ui.Styles
 	// colors is the theme the styles were built from, kept because they are
 	// built twice: once dark, and again when the terminal says otherwise.
 	theme theme.Theme
@@ -210,6 +213,7 @@ func (m *Model) newShell() shell.Shell {
 		LegendLines: legendMaxLines,
 		// Messages are toasts; the row shows only while a line is typed on it.
 		StatusStyle: shell.Toast,
+		Clipboard:   m.clipboard,
 	})
 }
 

@@ -13,7 +13,7 @@ require (
 	github.com/hashicorp/hcl v1.0.1-vault-7
 	github.com/hashicorp/vault/api v1.23.0
 	github.com/lithammer/fuzzysearch v1.1.8
-	github.com/lucasassuncao/bezel v0.17.0
+	github.com/lucasassuncao/bezel v0.19.0
 	github.com/mattn/go-isatty v0.0.24
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1

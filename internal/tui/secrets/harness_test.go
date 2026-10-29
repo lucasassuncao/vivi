@@ -199,13 +199,13 @@ func (h *harness) paste(s string) {
 func (h *harness) focus(path string) *node {
 	h.t.Helper()
 	h.m.adopt(h.ctx)
-	for i, r := range h.m.tree.Nodes {
+	for i, r := range h.m.tree.Nodes() {
 		if r.kind != rowNode {
 			continue
 		}
 		n := r.node
 		if n.fullPath() == path || (n.kind != kindSecret && n.fullPath() == strings.TrimSuffix(path, "/")+"/") {
-			h.m.tree.Cursor = i
+			h.m.tree.moveTo(i)
 			h.run(h.m.onCursorMoved())
 			return n
 		}
@@ -248,8 +248,8 @@ func (h *harness) mountNamed(name string) *node {
 }
 
 func (h *harness) visiblePaths() []string {
-	out := make([]string, 0, len(h.m.tree.Nodes))
-	for _, r := range h.m.tree.Nodes {
+	out := make([]string, 0, h.m.tree.Len())
+	for _, r := range h.m.tree.Nodes() {
 		if r.kind == rowNode {
 			out = append(out, r.node.fullPath())
 		}

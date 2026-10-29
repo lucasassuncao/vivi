@@ -84,7 +84,7 @@ func newAddForm(st ui.Styles, width, bodyHeight int) *fieldForm {
 // and not offered: the type is the server's, and guessing at it is how a
 // digit-only password becomes a number.
 func newEditForm(st ui.Styles, index int, fld field, width, bodyHeight int) *fieldForm {
-	key := ui.NewInput(st.Shell()).WithValue(fld.key)
+	key := ui.NewInput(st.Shell()).SetValue(fld.key)
 
 	f := &fieldForm{key: key, value: newValueArea(st), index: index, fixed: true, focus: focusValue}
 	f.typ = typeIndex(fld.orig)

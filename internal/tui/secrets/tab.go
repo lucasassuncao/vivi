@@ -75,11 +75,11 @@ func (m *Model) ClickList(y, height int, ctx ui.Context) tea.Cmd {
 		y, height = y-1, height-1
 	}
 	vis := m.tree.Visible()
-	i := layout.ScrollStart(m.tree.Cursor, len(vis), height) + y
+	i := layout.ScrollStart(m.tree.Cursor(), len(vis), height) + y
 	switch {
-	case y < 0 || i >= len(vis) || m.tree.Nodes[vis[i]].node == nil:
+	case y < 0 || i >= len(vis) || m.tree.Node(vis[i]).node == nil:
 		return nil
-	case i == m.tree.Cursor:
+	case i == m.tree.Cursor():
 		return m.drain(m.keySecrets(tea.KeyPressMsg{Code: tea.KeyEnter}))
 	}
 	m.tree.moveTo(i)
