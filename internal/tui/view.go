@@ -25,6 +25,7 @@ const (
 func (m *Model) View() tea.View {
 	v := tea.NewView(m.render())
 	v.AltScreen = true
+	v.BackgroundColor, v.ForegroundColor = m.st.Rt.Background, m.st.Rt.Foreground
 	if !m.noMouse {
 		v.MouseMode = tea.MouseModeCellMotion
 	}
