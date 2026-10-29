@@ -182,4 +182,4 @@ Dynamic secrets, leases, and token revocation. Writing to policies, auth methods
 
 ## License
 
-Released under the [MIT License](LICENSE).
+Released under the [Apache License 2.0](LICENSE).
