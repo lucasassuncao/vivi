@@ -98,9 +98,9 @@ func (m *Model) wheel(msg tea.MouseWheelMsg) tea.Cmd {
 		return m.currentTab().Key(key, ctx)
 	case paneDetail:
 		if up {
-			m.detail.ScrollUp(wheelLines)
+			m.detail = m.detail.ScrollUp(wheelLines)
 		} else {
-			m.detail.ScrollDown(wheelLines)
+			m.detail = m.detail.ScrollDown(wheelLines)
 		}
 	}
 	return nil

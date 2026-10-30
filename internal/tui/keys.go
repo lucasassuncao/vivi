@@ -104,7 +104,7 @@ func (m *Model) keyToken(msg tea.KeyPressMsg) tea.Cmd {
 // first visit. The number keys and ":tab" both land here.
 func (m *Model) switchTab(t tab) tea.Cmd {
 	m.setTab(t)
-	m.detail.GotoTop()
+	m.detail = m.detail.ToTop()
 	m.focus = ui.FocusList
 	return m.ensureTabLoaded()
 }
@@ -164,17 +164,17 @@ func (m *Model) keyDetail(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 
 	switch msg.String() {
 	case "down":
-		m.detail.ScrollDown(1)
+		m.detail = m.detail.ScrollDown(1)
 	case "up":
-		m.detail.ScrollUp(1)
+		m.detail = m.detail.ScrollUp(1)
 	case "home":
-		m.detail.GotoTop()
+		m.detail = m.detail.ToTop()
 	case "end":
-		m.detail.GotoBottom()
+		m.detail = m.detail.ToBottom()
 	case "pgdown":
-		m.detail.HalfPageDown()
+		m.detail = m.detail.HalfPageDown()
 	case "pgup":
-		m.detail.HalfPageUp()
+		m.detail = m.detail.HalfPageUp()
 	case "left", "esc":
 		// Left mirrors the right that got here, and is consumed either way:
 		// falling through would collapse a node in the tree behind the pane,
@@ -192,8 +192,8 @@ func (m *Model) keyDetail(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 func (m *Model) scrollToLine(line int) {
 	switch {
 	case line < m.detail.YOffset():
-		m.detail.SetYOffset(line)
+		m.detail = m.detail.SetYOffset(line)
 	case m.detail.Height() > 0 && line >= m.detail.YOffset()+m.detail.Height():
-		m.detail.SetYOffset(line - m.detail.Height() + 1)
+		m.detail = m.detail.SetYOffset(line - m.detail.Height() + 1)
 	}
 }

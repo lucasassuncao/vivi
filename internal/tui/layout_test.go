@@ -107,7 +107,7 @@ func TestTheDetailViewportIsSizedToItsOwnPanel(t *testing.T) {
 		t.Fatal("precondition: this screen should have a copy panel")
 	}
 	got := h.m.detail.Height()
-	if h.m.detail.TotalLineCount() > got {
+	if h.m.detail.TotalRows() > got {
 		got++ // the row "↓ N more lines" stands on
 	}
 	if want := draw.InnerRect(detail).H; got != want {

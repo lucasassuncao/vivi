@@ -9,10 +9,10 @@ import (
 	"github.com/lucasassuncao/bezel/theme"
 	"io"
 
-	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
 	"github.com/lucasassuncao/bezel"
 	"github.com/lucasassuncao/bezel/animation"
+	"github.com/lucasassuncao/bezel/component/viewport"
 	"github.com/lucasassuncao/bezel/shell"
 	"github.com/lucasassuncao/vivi/internal/app"
 	"github.com/lucasassuncao/vivi/internal/tui/activity"
@@ -263,7 +263,7 @@ func (m *Model) update(msg tea.Msg) tea.Cmd {
 		return nil
 
 	case ui.ScrollTopMsg:
-		m.detail.GotoTop()
+		m.detail = m.detail.ToTop()
 		return nil
 
 	case ui.ScrollToLineMsg:
@@ -352,14 +352,14 @@ func (m *Model) syncDetail() {
 
 	right := m.renderDetail(width)
 
-	m.detail.SetWidth(width)
-	m.detail.SetContent(right)
+	m.detail = m.detail.SetWidth(width)
+	m.detail = m.detail.SetContent(right)
 	// Overflowing, the last row is kept for "↓ N more lines", as in the lists.
 	// Set once: a full height first would clamp the scroll a row short.
-	if height > 1 && m.detail.TotalLineCount() > height {
+	if height > 1 && m.detail.TotalRows() > height {
 		height--
 	}
-	m.detail.SetHeight(height)
+	m.detail = m.detail.SetHeight(height)
 }
 
 // reloadCurrent drops what the tab in front of the user is showing and fetches
@@ -402,7 +402,7 @@ func (m *Model) contextIn(bodyHeight int) ui.Context {
 
 func (m *Model) nextTab(delta int) {
 	m.setTab(tab((int(m.tab) + delta + len(tabNames)) % len(tabNames)))
-	m.detail.GotoTop()
+	m.detail = m.detail.ToTop()
 }
 
 // setTab moves to a tab and drops the mode the old one owned. The version list

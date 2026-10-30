@@ -153,9 +153,9 @@ func TestLongDetailContentIsClippedAndScrollable(t *testing.T) {
 	for range 100 {
 		h.press("pgdown")
 	}
-	if h.m.detail.YOffset() > h.m.detail.TotalLineCount()-h.m.detail.Height() {
+	if h.m.detail.YOffset() > h.m.detail.TotalRows()-h.m.detail.Height() {
 		t.Fatalf("offset %d ran past the end (%d lines, %d tall)",
-			h.m.detail.YOffset(), h.m.detail.TotalLineCount(), h.m.detail.Height())
+			h.m.detail.YOffset(), h.m.detail.TotalRows(), h.m.detail.Height())
 	}
 	if lines := strings.Split(h.view(), "\n"); len(lines) > 24 {
 		t.Fatalf("overflowed after scrolling: %d lines", len(lines))
@@ -286,7 +286,7 @@ func TestTheDetailPaneCountsWhatIsLeft(t *testing.T) {
 	h.m.Update(tea.WindowSizeMsg{Width: 100, Height: 24})
 
 	pane := h.m.detailView()
-	want := fmt.Sprintf("↓ %d more lines", h.m.detail.TotalLineCount()-h.m.detail.Height())
+	want := fmt.Sprintf("↓ %d more lines", h.m.detail.TotalRows()-h.m.detail.Height())
 	if lines := strings.Split(pane, "\n"); !strings.Contains(lines[len(lines)-1], want) {
 		t.Errorf("the pane's last row should say %q:\n%s", want, pane)
 	}

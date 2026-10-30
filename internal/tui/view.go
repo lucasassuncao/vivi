@@ -109,11 +109,11 @@ func (m *Model) renderDetail(width int) string {
 // detailView is the detail viewport, with "↓ N more lines" on the row
 // syncDetail kept for it while anything is below the pane.
 func (m *Model) detailView() string {
-	rest := m.detail.TotalLineCount() - m.detail.YOffset() - m.detail.Height()
+	rest := m.detail.TotalRows() - m.detail.YOffset() - m.detail.Height()
 	if m.detail.Height() <= 0 || rest <= 0 {
-		return m.detail.View()
+		return m.detail.View(m.st.Shell())
 	}
-	return m.detail.View() + "\n" + m.st.Dim.Render(moreLines(rest))
+	return m.detail.View(m.st.Shell()) + "\n" + m.st.Dim.Render(moreLines(rest))
 }
 
 // moreLines is the count under a pane, singular for one.
