@@ -70,10 +70,10 @@ func (c *confirmation) accepted() tea.Msg {
 
 // typeInto hands a key or a paste to the prompt.
 func (c *confirmation) typeInto(msg tea.Msg) tea.Cmd {
-	updated, cmd := c.prompt.Update(msg)
+	updated, r := c.prompt.Update(msg)
 	p := updated.(overlay.Prompt)
 	c.prompt = &p
-	return cmd
+	return r.Cmd
 }
 
 // inputTaker is a confirmation message that needs the text the user typed. It

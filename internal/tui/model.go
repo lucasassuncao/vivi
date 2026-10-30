@@ -11,6 +11,7 @@ import (
 
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel"
 	"github.com/lucasassuncao/bezel/animation"
 	"github.com/lucasassuncao/bezel/shell"
 	"github.com/lucasassuncao/vivi/internal/app"
@@ -302,7 +303,7 @@ func (m *Model) update(msg tea.Msg) tea.Cmd {
 
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		m.sh, _, _ = m.sh.Update(msg)
+		m.sh, _ = m.sh.Update(msg)
 		m.relayout()
 		// The one widget sized to the terminal rather than measured at render:
 		// a text area has to know its width to wrap and its height to scroll,
@@ -324,18 +325,18 @@ func (m *Model) update(msg tea.Msg) tea.Cmd {
 	case animation.FrameMsg:
 		// The panel's own frames; any other is the shell's, below.
 		if m.refSlide.Active() {
-			var cmd tea.Cmd
-			if m.refSlide, cmd = m.refSlide.Update(msg); cmd != nil || !m.refSlide.Active() {
-				return cmd
+			var r bezel.Result
+			if m.refSlide, r = m.refSlide.Update(msg); r.Cmd != nil || !m.refSlide.Active() {
+				return r.Cmd
 			}
 		}
 	}
 
 	// The shell's own messages: a banner expiring, the palette finishing, a
 	// command picked in it, a paste into it. Everything else is the tabs'.
-	if sh, handled, cmd := m.sh.Update(msg); handled {
+	if sh, r := m.sh.Update(msg); r.Handled {
 		m.sh = sh
-		return cmd
+		return r.Cmd
 	}
 	return m.handleData(msg)
 }

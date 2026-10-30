@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
 
@@ -95,7 +96,9 @@ func (m *Model) routeToInput(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	switch current := m.currentMode().(type) {
 	case filtering:
-		m.filterInput, cmd = m.filterInput.Update(msg)
+		var r bezel.Result
+		m.filterInput, r = m.filterInput.Update(msg)
+		cmd = r.Cmd
 	case confirming:
 		if c := current.confirmation; c != nil && c.needsInput() {
 			cmd = c.typeInto(msg)

@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel"
 	"github.com/lucasassuncao/bezel/draw"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
@@ -17,9 +18,9 @@ const wheelLines = 3
 // clicks; a modal of the tab's takes the keyboard, so the mouse stands aside.
 func (m *Model) mouse(msg tea.MouseMsg) tea.Cmd {
 	if m.showingCommands() || m.sh.TopOverlay() != nil {
-		var cmd tea.Cmd
-		m.sh, _, cmd = m.sh.Update(msg)
-		return cmd
+		var r bezel.Result
+		m.sh, r = m.sh.Update(msg)
+		return r.Cmd
 	}
 	if m.currentTab().Captures() {
 		return nil

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
 
@@ -50,9 +51,9 @@ func (m *Model) handleKey(msg tea.KeyPressMsg) tea.Cmd {
 	// The shell's own panels answer first: the command line, then whichever
 	// modal is on top of the stack.
 	if m.showingCommands() {
-		var cmd tea.Cmd
-		m.sh, _, cmd = m.sh.Update(msg)
-		return cmd
+		var r bezel.Result
+		m.sh, r = m.sh.Update(msg)
+		return r.Cmd
 	}
 	switch m.sh.TopOverlay().(type) {
 	case tokenOverlay:

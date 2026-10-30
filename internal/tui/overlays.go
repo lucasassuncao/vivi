@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel"
 	"github.com/lucasassuncao/bezel/layout"
 	"github.com/lucasassuncao/bezel/legend"
 	"github.com/lucasassuncao/bezel/overlay"
@@ -13,12 +14,16 @@ import (
 
 type helpOverlay struct{ m *Model }
 
-func (o helpOverlay) Update(tea.Msg) (overlay.Overlay, tea.Cmd) { return o, nil }
-func (o helpOverlay) View(body layout.Rect) string              { return o.m.renderHelp(body.H) }
-func (helpOverlay) Legend() []legend.Entry                      { return nil }
+func (o helpOverlay) Update(tea.Msg) (overlay.Overlay, bezel.Result) {
+	return o, bezel.Result{}
+}
+func (o helpOverlay) View(body layout.Rect) string { return o.m.renderHelp(body.H) }
+func (helpOverlay) Legend() []legend.Entry         { return nil }
 
 type tokenOverlay struct{ m *Model }
 
-func (o tokenOverlay) Update(tea.Msg) (overlay.Overlay, tea.Cmd) { return o, nil }
-func (o tokenOverlay) View(body layout.Rect) string              { return o.m.renderToken(body.H) }
-func (tokenOverlay) Legend() []legend.Entry                      { return nil }
+func (o tokenOverlay) Update(tea.Msg) (overlay.Overlay, bezel.Result) {
+	return o, bezel.Result{}
+}
+func (o tokenOverlay) View(body layout.Rect) string { return o.m.renderToken(body.H) }
+func (tokenOverlay) Legend() []legend.Entry         { return nil }

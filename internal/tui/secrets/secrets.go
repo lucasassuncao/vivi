@@ -7,6 +7,7 @@ package secrets
 import (
 	"errors"
 	"fmt"
+	"github.com/lucasassuncao/bezel"
 	"github.com/lucasassuncao/bezel/draw"
 	"maps"
 	"slices"
@@ -525,11 +526,11 @@ func (m *Model) keyFilter(msg tea.KeyPressMsg) tea.Cmd {
 		return m.onCursorMoved()
 	}
 
-	var cmd tea.Cmd
-	m.filterInput, cmd = m.filterInput.Update(msg)
+	var r bezel.Result
+	m.filterInput, r = m.filterInput.Update(msg)
 	m.tree.filter = m.filterInput.Value()
 	m.tree.reflow()
-	return cmd
+	return r.Cmd
 }
 
 // Selection.

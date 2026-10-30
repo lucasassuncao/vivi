@@ -4,6 +4,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel"
 	"github.com/lucasassuncao/bezel/animation/text"
 	"github.com/lucasassuncao/bezel/draw"
 	"github.com/lucasassuncao/vivi/internal/vault"
@@ -93,20 +94,20 @@ func (m *Model) stopMotion() {
 func (m *Model) animate(msg tea.Msg) tea.Cmd {
 	var cmds []tea.Cmd
 	for k, s := range m.scrambles {
-		var cmd tea.Cmd
-		if m.scrambles[k], cmd = s.Update(msg); !m.scrambles[k].Active() {
+		var r bezel.Result
+		if m.scrambles[k], r = s.Update(msg); !m.scrambles[k].Active() {
 			delete(m.scrambles, k)
 		}
-		cmds = append(cmds, cmd)
+		cmds = append(cmds, r.Cmd)
 	}
 	for v, s := range m.strikes {
-		var cmd tea.Cmd
-		if m.strikes[v], cmd = s.Update(msg); !m.strikes[v].Active() {
+		var r bezel.Result
+		if m.strikes[v], r = s.Update(msg); !m.strikes[v].Active() {
 			delete(m.strikes, v)
 		}
-		cmds = append(cmds, cmd)
+		cmds = append(cmds, r.Cmd)
 	}
-	var cmd tea.Cmd
-	m.shake, cmd = m.shake.Update(msg)
-	return tea.Batch(append(cmds, cmd)...)
+	var r bezel.Result
+	m.shake, r = m.shake.Update(msg)
+	return tea.Batch(append(cmds, r.Cmd)...)
 }

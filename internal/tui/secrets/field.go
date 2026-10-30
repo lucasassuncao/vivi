@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/lucasassuncao/bezel"
 	"github.com/lucasassuncao/bezel/component/input"
 	"github.com/lucasassuncao/bezel/component/textbox"
 	"github.com/lucasassuncao/bezel/draw"
@@ -163,6 +164,7 @@ func (f *fieldForm) showErr() bool {
 // keyForm drives the form. It returns done when the form is finished with,
 // either applied or dismissed, so the editor can drop it.
 func (m *Model) keyForm(e *editor, f *fieldForm, msg tea.KeyPressMsg) (cmd tea.Cmd, done bool) {
+	var r bezel.Result
 	switch msg.String() {
 	case "esc":
 		return nil, true
@@ -185,8 +187,8 @@ func (m *Model) keyForm(e *editor, f *fieldForm, msg tea.KeyPressMsg) (cmd tea.C
 			f.setFocus(focusType)
 			return nil, false
 		}
-		f.key, cmd = f.key.Update(msg)
-		return cmd, false
+		f.key, r = f.key.Update(msg)
+		return r.Cmd, false
 
 	case focusType:
 		// Arrows only. Letters used to cycle the selector too, and a paste that
@@ -208,23 +210,23 @@ func (m *Model) keyForm(e *editor, f *fieldForm, msg tea.KeyPressMsg) (cmd tea.C
 	// paste the terminal delivers as keystrokes then lands whole in the area.
 	// With enter accepting, the first pasted line closed the form and the rest
 	// fell on the table, where "x" removes a field.
-	f.value, cmd = f.value.Update(msg)
+	f.value, r = f.value.Update(msg)
 	f.resize(m.width, m.bodyHeight())
 	f.validate()
-	return cmd, false
+	return r.Cmd, false
 }
 
 // route hands a message that is not a key to the focused widget: the caret's
 // blink timer, and the paste the text area asks the terminal for.
 func (f *fieldForm) route(msg tea.Msg) tea.Cmd {
-	var cmd tea.Cmd
+	var r bezel.Result
 	switch f.focus {
 	case focusKey:
-		f.key, cmd = f.key.Update(msg)
+		f.key, r = f.key.Update(msg)
 	case focusValue:
-		f.value, cmd = f.value.Update(msg)
+		f.value, r = f.value.Update(msg)
 	}
-	return cmd
+	return r.Cmd
 }
 
 // setFocus moves the keyboard to a row, so exactly one widget shows a caret,
