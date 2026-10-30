@@ -5,7 +5,6 @@ import (
 	"github.com/lucasassuncao/bezel/component/input"
 	"github.com/lucasassuncao/bezel/component/textbox"
 	"github.com/lucasassuncao/bezel/overlay"
-	"github.com/lucasassuncao/bezel/palette"
 	"github.com/lucasassuncao/bezel/shell"
 	"strings"
 	"sync"
@@ -283,11 +282,8 @@ func (h *harness) copied() string {
 
 // commandLine is what is typed in the open palette, or "" with none open.
 func (h *harness) commandLine() string {
-	p, ok := h.m.sh.TopOverlay().(palette.Model)
-	if !ok {
-		return ""
-	}
-	return p.Value()
+	line, _ := h.m.sh.CommandLine()
+	return line
 }
 
 // caretBlink is a text field's blink, which re-arms itself when fed back.

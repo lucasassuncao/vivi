@@ -39,8 +39,7 @@ func (a tabAdapter) Actions(shell.Context) []shell.Action {
 	helps := shell.When(func(shell.Context) bool { return m.helpKey() != "" })
 	var out []shell.Action
 	for _, e := range keys {
-		h := e.Help()
-		out = append(out, shell.Custom(h.Key, h.Desc, nil, shell.WithKey(e.Keys()...), shell.Needs(e.Needs), shell.Group(e.Group), shell.DisplayOnly()))
+		out = append(out, shell.Custom(e.Help.Key, e.Help.Desc, nil, shell.Needs(e.Needs), shell.Group(e.Group), shell.DisplayOnly()))
 	}
 	// Group 0 like the moves, and after them: the legend sorts by group, stably.
 	return append(out, shell.Help(shell.DisplayOnly(), shell.Named(""), helps))
@@ -73,13 +72,12 @@ const legendMaxLines = 3
 // legendLines is the legend packed to a width the way the shell packs it,
 // for the tests that pin how it folds.
 func (m *Model) legendLines(width int) []string {
-	st := m.st.Shell().Legend
-	st.HelpKey = m.helpKey()
+	helpKey := m.helpKey()
 	keys := m.legend()
-	if st.HelpKey != "" {
-		keys = append(keys, legend.New(st.HelpKey, "help")) // where the shell puts it
+	if helpKey != "" {
+		keys = append(keys, legend.New(helpKey, "help")) // where the shell puts it
 	}
-	return legend.Pack(keys, width, legendMaxLines, st)
+	return legend.Pack(keys, width, legendMaxLines, helpKey, m.st.Shell().Legend)
 }
 
 // renderLegend is legendLines joined, for the tests that read one line.

@@ -1,6 +1,9 @@
 package ui
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/lucasassuncao/bezel/draw"
 	"github.com/lucasassuncao/bezel/layout"
 )
@@ -19,13 +22,24 @@ func (s Styles) EmptyState(width, height int, message, hint string) string {
 	return draw.EmptyState(layout.Rect{W: width, H: height}, message, hint, draw.ChromeStyle{Dim: s.Dim})
 }
 
-// Heading, HeadingBadged and KV are bezel's, drawn with this theme's inks.
+// Heading is bezel's, drawn with this theme's section ink.
 func (s Styles) Heading(name string, width int) string {
 	return draw.Heading(name, s.Section, width)
 }
 
+// HeadingBadged is a heading wearing a badge beside it, or the heading alone
+// when the two do not fit: a badge that says what the block is has to be read
+// with it.
 func (s Styles) HeadingBadged(name, badge string, width int) string {
-	return draw.HeadingBadged(name, badge, s.Section, width)
+	label := strings.ToUpper(name)
+	if draw.Width(label)+1+draw.Width(badge) > width {
+		return s.Heading(name, width)
+	}
+	return s.Section.Render(label) + " " + badge
 }
 
-func (s Styles) KV(key, value string, width int) string { return draw.KV(key, value, s.Key, width) }
+// KV is one labelled row: the key padded to 14, the value after it, the whole
+// line cut to width. Both halves are sanitized: either may be a server's text.
+func (s Styles) KV(key, value string, width int) string {
+	return draw.Cut("  "+s.Key.Render(fmt.Sprintf("%-14s ", draw.Sanitize(key)))+draw.Sanitize(value), width) + "\n"
+}

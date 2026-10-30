@@ -67,11 +67,11 @@ func TestTheDetailPaneSaysDeleteTakesTheField(t *testing.T) {
 
 	_, keys := h.m.Legend(h.ctx)
 	for _, e := range keys {
-		if e.Help().Key != "d" {
+		if e.Help.Key != "d" {
 			continue
 		}
-		if e.Help().Desc != "delete field" {
-			t.Errorf("the pane offers [d] %q, want \"delete field\"", e.Help().Desc)
+		if e.Help.Desc != "delete field" {
+			t.Errorf("the pane offers [d] %q, want \"delete field\"", e.Help.Desc)
 		}
 		return
 	}
@@ -85,8 +85,8 @@ func TestRevealLegendNamesTheNextPress(t *testing.T) {
 	action := func(h *harness) string {
 		_, keys := h.m.Legend(h.ctx)
 		for _, e := range keys {
-			if e.Help().Key == "r" {
-				return e.Help().Desc
+			if e.Help.Key == "r" {
+				return e.Help.Desc
 			}
 		}
 		return ""
@@ -378,7 +378,7 @@ func TestActionsWorkAndAreAdvertisedInTheDetailPane(t *testing.T) {
 	_, keys := h.m.Legend(h.ctx)
 	advertised := map[string]bool{}
 	for _, entry := range keys {
-		advertised[entry.Help().Key] = true
+		advertised[entry.Help.Key] = true
 	}
 	// One key each. The copy family used to ride a single pair here, "y/Y/C",
 	// read positionally as value, path and command; the last two are printed in
@@ -395,8 +395,8 @@ func TestActionsWorkAndAreAdvertisedInTheDetailPane(t *testing.T) {
 	// And the words have to be the ones that distinguish the pane from the list.
 	want := map[string]string{"r": "reveal field", "y": "copy field"}
 	for _, e := range keys {
-		if w, ok := want[e.Help().Key]; ok && e.Help().Desc != w {
-			t.Errorf("the pane advertises %q as %q, want %q", e.Help().Key, e.Help().Desc, w)
+		if w, ok := want[e.Help.Key]; ok && e.Help.Desc != w {
+			t.Errorf("the pane advertises %q as %q, want %q", e.Help.Key, e.Help.Desc, w)
 		}
 	}
 

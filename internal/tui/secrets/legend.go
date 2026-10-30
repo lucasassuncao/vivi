@@ -15,18 +15,18 @@ var (
 	// "d" takes what the cursor is on, which is a field in the pane and the
 	// secret in the list. A key that took the secret from beside "reveal field"
 	// and "copy field" read as taking the field, and did not.
-	paneDeleteLegend = legend.New("d", "delete field", ui.CapWrite)
+	paneDeleteLegend = ui.WriteKey("d", "delete field")
 
 	// M sits beside d so the reversible delete and the final one read as a pair.
-	destroySecretLegend = legend.New("M", "destroy secret", ui.CapWrite)
+	destroySecretLegend = ui.WriteKey("M", "destroy secret")
 )
 
 // listDeleteLegend says "soft" only where undelete exists: on v1, d is final.
 func (m *Model) listDeleteLegend() legend.Entry {
 	if m.SelectedVersioned() {
-		return legend.New("d", "soft delete", ui.CapWrite)
+		return ui.WriteKey("d", "soft delete")
 	}
-	return legend.New("d", "delete", ui.CapWrite)
+	return ui.WriteKey("d", "delete")
 }
 
 // "r" is a toggle, so the bar names what the next press does rather than what
@@ -67,9 +67,9 @@ func (m *Model) openLegend() []legend.Entry {
 // under the table are the same list, from here: as two lists they drifted, and
 // the line went on naming keys the bar had already stopped offering.
 func editorKeys() []legend.Entry {
-	return append([]legend.Entry{legend.New("ctrl+s", "save", ui.CapWrite), legend.New("esc", "cancel")},
-		ui.Actions(legend.New("enter", "edit this value"), legend.New("a", "add a key", ui.CapWrite),
-			legend.New("x", "remove", ui.CapWrite))...)
+	return append([]legend.Entry{ui.WriteKey("ctrl+s", "save"), legend.New("esc", "cancel")},
+		ui.Actions(legend.New("enter", "edit this value"), ui.WriteKey("a", "add a key"),
+			ui.WriteKey("x", "remove"))...)
 }
 
 // modeLegend is the legend of the screen this tab has up, or nil when the
@@ -88,8 +88,8 @@ func (m *Model) legendOf(md mode) []legend.Entry {
 		// irreversible one goes last, so a narrow terminal drops it first.
 		return ui.ListLegend("move", []legend.Entry{legend.New("enter", "read"), legend.New("esc", "back")},
 			ui.Actions(legend.New("space", "mark"), legend.New("d", "diff"),
-				legend.New("b", "rollback", ui.CapWrite), legend.New("u", "undelete", ui.CapWrite),
-				legend.New("D", "destroy version", ui.CapWrite))...)
+				ui.WriteKey("b", "rollback"), ui.WriteKey("u", "undelete"),
+				ui.WriteKey("D", "destroy version"))...)
 	case filtering:
 		return []legend.Entry{legend.New("type", "to filter"), legend.New("enter", "apply"), legend.New("esc", "clear")}
 	}

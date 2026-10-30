@@ -108,7 +108,7 @@ const referenceSlide = 150 * time.Millisecond
 func (m *Model) copyPanelHeight() int {
 	switch {
 	case m.refSlide.Active():
-		return m.refSlide.Cur
+		return m.refSlide.Value()
 	case m.refHidden:
 		return 0
 	}

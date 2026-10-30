@@ -90,7 +90,7 @@ VAULT_NAMESPACE, and has no configuration of its own.`,
 				return err
 			}
 			if listThemes {
-				return themebrowser.BrowseInTerminal()
+				return themebrowser.BrowseInTerminal(theme.Default())
 			}
 
 			th, err := resolveTheme(themeName)

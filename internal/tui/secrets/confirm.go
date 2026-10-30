@@ -2,6 +2,7 @@ package secrets
 
 import (
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel/draw"
 	"github.com/lucasassuncao/bezel/overlay"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
@@ -47,7 +48,7 @@ func newConfirm(title string, lines []string, onConfirm tea.Msg) *confirmation {
 // text the user has to reproduce, normally the last segment of the path.
 func (m *Model) newDangerConfirm(title string, lines []string, require string, onConfirm tea.Msg) *confirmation {
 	in := ui.NewInput(m.st.Shell()).WithPrompt("> ")
-	p := overlay.NewPrompt(title, nil, m.st.Shell()).WithKind(overlay.Danger).
+	p := overlay.NewPrompt(title, nil, m.st.Shell()).WithKind(draw.Danger).
 		WithInput(in).WithLines(lines...).WithRequire(require)
 
 	return &confirmation{title: title, lines: lines, danger: true, prompt: &p, onConfirm: onConfirm}

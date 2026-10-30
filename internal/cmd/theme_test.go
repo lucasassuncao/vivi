@@ -16,13 +16,13 @@ func TestResolveThemeDefaultsToTheBuiltInPalette(t *testing.T) {
 	}
 	// The zero value means "use the adaptive palette", which is the only one
 	// that reads on both light and dark terminals.
-	if th != theme.Default {
+	if th != theme.Default() {
 		t.Fatalf("expected the adaptive default, got %+v", th)
 	}
 }
 
 func TestResolveThemeLoadsANamedTheme(t *testing.T) {
-	th, err := resolveTheme("grape")
+	th, err := resolveTheme("mint")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -32,11 +32,11 @@ func TestResolveThemeLoadsANamedTheme(t *testing.T) {
 }
 
 func TestResolveThemeIsCaseInsensitive(t *testing.T) {
-	lower, err := resolveTheme("mango")
+	lower, err := resolveTheme("terminal")
 	if err != nil {
 		t.Fatal(err)
 	}
-	upper, err := resolveTheme("MANGO")
+	upper, err := resolveTheme("TERMINAL")
 	if err != nil {
 		t.Fatalf("an upper case name should resolve: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestResolveThemeRejectsAnUnknownName(t *testing.T) {
 }
 
 func TestResolveThemeReadsTheEnvironment(t *testing.T) {
-	t.Setenv(ThemeEnvVar, "kiwi")
+	t.Setenv(ThemeEnvVar, "plain")
 
 	fromEnv, err := resolveTheme("")
 	if err != nil {
@@ -69,7 +69,7 @@ func TestResolveThemeReadsTheEnvironment(t *testing.T) {
 	}
 
 	// An explicit flag wins over the environment.
-	fromFlag, err := resolveTheme("cherry")
+	fromFlag, err := resolveTheme("mint")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestResolveThemeReadsTheEnvironment(t *testing.T) {
 // theme may paint the two alike.
 func TestThemesKeepWarningApartFromDanger(t *testing.T) {
 	for name, th := range theme.All() {
-		if c := theme.ResolveColors(th, true); c.Warning == c.Danger {
+		if c := theme.Resolve(th, true).Colors; c.Warning == c.Danger {
 			t.Fatalf("theme %q paints warning and danger alike (%q)", name, c.Warning)
 		}
 	}

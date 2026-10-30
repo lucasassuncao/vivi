@@ -93,10 +93,10 @@ func TestTheLegendNeverOffersAKeyThePaletteWouldNot(t *testing.T) {
 				offered[c.key] = true
 			}
 			for _, e := range h.m.legend() {
-				if navigation[e.Help().Key] || offered[e.Help().Key] {
+				if navigation[e.Help.Key] || offered[e.Help.Key] {
 					continue
 				}
-				t.Errorf("the bar offers [%s] %s, which the palette does not", e.Help().Key, e.Help().Desc)
+				t.Errorf("the bar offers [%s] %s, which the palette does not", e.Help.Key, e.Help.Desc)
 			}
 		})
 	}
@@ -154,11 +154,11 @@ func TestLegendNamesTheNarrowVerbForOpeningASecret(t *testing.T) {
 
 	var offered string
 	for _, hi := range h.m.legend() {
-		if strings.Contains(hi.Help().Desc, "focus detail") {
+		if strings.Contains(hi.Help.Desc, "focus detail") {
 			t.Errorf("a terminal too narrow for two panes still offers to focus one: %+v", hi)
 		}
-		if strings.Contains(hi.Help().Desc, "open secret") {
-			offered = hi.Help().Key
+		if strings.Contains(hi.Help.Desc, "open secret") {
+			offered = hi.Help.Key
 		}
 	}
 	if offered == "" {
@@ -198,7 +198,7 @@ func TestTheLegendOnlyNamesKeysThatDoSomethingHere(t *testing.T) {
 
 		var named []string
 		for _, entry := range h.m.legend() {
-			named = append(named, entry.Help().Desc)
+			named = append(named, entry.Help.Desc)
 		}
 		line := strings.Join(named, " · ")
 
@@ -237,7 +237,7 @@ func TestTheHelpPanelAgreesWithTheLegendAboutTheDetailPane(t *testing.T) {
 
 		legendScrolls := false
 		for _, entry := range h.m.legend() {
-			if entry.Help().Desc == "scroll" || entry.Help().Desc == "fields" {
+			if entry.Help.Desc == "scroll" || entry.Help.Desc == "fields" {
 				legendScrolls = true
 			}
 		}
@@ -370,8 +370,8 @@ func TestTheWholeLegendSurvivesAnEightyEightColumnTerminal(t *testing.T) {
 
 	rendered := strings.Join(lines, "\n")
 	for _, e := range h.m.legend() {
-		if !strings.Contains(rendered, e.Help().Desc) {
-			t.Errorf("%q is missing from the legend at eighty-eight columns:\n%s", e.Help().Desc, rendered)
+		if !strings.Contains(rendered, e.Help.Desc) {
+			t.Errorf("%q is missing from the legend at eighty-eight columns:\n%s", e.Help.Desc, rendered)
 		}
 	}
 	if strings.Contains(rendered, "in [?]") {
@@ -396,7 +396,7 @@ func TestTheLegendCountsWhatItHadToDrop(t *testing.T) {
 
 	shown := 0
 	for _, e := range h.m.legend() {
-		if strings.Contains(rendered, e.Help().Desc) {
+		if strings.Contains(rendered, e.Help.Desc) {
 			shown++
 		}
 	}

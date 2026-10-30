@@ -124,7 +124,7 @@ func (m *Model) tokenTTLLabel() string {
 		return m.st.BadgeDang.Render(" token expired ")
 	}
 
-	label := "token " + draw.ShortDuration(left)
+	label := "token " + shortDuration(left)
 	switch app.ClassifyTTL(left) {
 	case app.TTLCritical:
 		return m.st.BadgeDang.Render(" " + label + " ")

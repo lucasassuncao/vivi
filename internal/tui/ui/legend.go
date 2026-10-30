@@ -9,6 +9,14 @@ import "github.com/lucasassuncao/bezel/legend"
 // CapWrite marks a key a read-only session refuses; the shell drops it.
 const CapWrite legend.Capability = "write"
 
+// WriteKey is a legend entry a read-only session drops: keys and desc that
+// need CapWrite.
+func WriteKey(keys, desc string) legend.Entry {
+	e := legend.New(keys, desc)
+	e.Needs = CapWrite
+	return e
+}
+
 // ListLegend opens every list's legend the same way: the tabs, the arrows and
 // moves, the other ways of moving here, then the command line, then the rest.
 func ListLegend(arrows string, moves []legend.Entry, rest ...legend.Entry) []legend.Entry {

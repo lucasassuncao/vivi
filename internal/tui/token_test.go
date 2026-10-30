@@ -78,3 +78,15 @@ func TestRenewRefusedForANonRenewableToken(t *testing.T) {
 		t.Error("a non-renewable token got no explanation")
 	}
 }
+
+func TestShortDurationKeepsTheTwoLargestUnits(t *testing.T) {
+	for d, want := range map[time.Duration]string{
+		0: "0s", 42 * time.Second: "42s", 5*time.Minute + 30*time.Second: "5m",
+		3*time.Hour + 12*time.Minute: "3h12m", 2 * time.Hour: "2h",
+		50*time.Hour + 59*time.Minute: "2d2h", 48 * time.Hour: "2d",
+	} {
+		if got := shortDuration(d); got != want {
+			t.Errorf("shortDuration(%v) = %q, want %q", d, got, want)
+		}
+	}
+}

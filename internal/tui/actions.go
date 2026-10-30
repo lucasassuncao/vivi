@@ -2,7 +2,6 @@ package tui
 
 import (
 	tea "charm.land/bubbletea/v2"
-	"github.com/lucasassuncao/bezel/palette"
 	"github.com/lucasassuncao/bezel/shell"
 )
 
@@ -50,7 +49,7 @@ type commandMsg struct {
 
 // showingCommands reports bezel's palette on top of the stack.
 func (m *Model) showingCommands() bool {
-	_, ok := m.sh.TopOverlay().(palette.Model)
+	_, ok := m.sh.CommandLine()
 	return ok
 }
 

@@ -103,7 +103,7 @@ func TestTheLegendDropsWritesInAReadOnlySession(t *testing.T) {
 
 	writes := map[string]bool{}
 	for _, e := range keys {
-		writes[e.Help().Key] = e.Needs == ui.CapWrite
+		writes[e.Help.Key] = e.Needs == ui.CapWrite
 	}
 	for _, key := range []string{"b", "u", "D"} {
 		if !writes[key] {

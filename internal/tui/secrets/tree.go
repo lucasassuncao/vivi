@@ -296,7 +296,7 @@ func (t *forest) matches(n *node) bool {
 
 // current returns the selected node, or nil when the tree is empty.
 func (t *forest) current() *node {
-	idx := t.CurrentIdx()
+	idx := t.Index()
 	if idx < 0 {
 		return nil
 	}

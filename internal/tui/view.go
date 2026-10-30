@@ -50,7 +50,7 @@ func (m *Model) render() string {
 		return m.tooSmall()
 	}
 
-	out := m.sh.View(m.panes())
+	out := m.sh.View(m.panes()).Content
 	// A tab's modal - a confirmation, a form, a diff - floats over the panes
 	// but under the shell's own panels, which answer for themselves.
 	if m.browsing() {

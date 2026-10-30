@@ -91,8 +91,8 @@ func TestFocusSurvivesAMonochromeTerminal(t *testing.T) {
 	h := newHarness(t)
 	th := h.m.st.Shell()
 	box := layout.Rect{W: 30, H: 5}
-	focused := monochrome(draw.Panel(box, "Secrets", "content", th.PanelFocused))
-	idle := monochrome(draw.Panel(box, "Secrets", "content", th.Panel))
+	focused := monochrome(draw.Panel(box, draw.Edges{Title: "Secrets"}, "content", th.PanelFocused))
+	idle := monochrome(draw.Panel(box, draw.Edges{Title: "Secrets"}, "content", th.Panel))
 
 	if focused == idle {
 		t.Errorf("the focused panel is indistinguishable without colour:\n%s", focused)

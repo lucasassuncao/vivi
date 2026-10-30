@@ -65,11 +65,11 @@ The integration suite also refuses any `VAULT_ADDR` that is not loopback, whatev
 ## Themes
 
 
-By default the palette is adaptive: it follows the terminal background, so it reads on light and dark alike. Naming a theme replaces it with a fixed set of colours, drawn from [bezel](https://github.com/lucasassuncao/bezel)'s registry of 58, the TUI library vivi is built on.
+By default the palette is adaptive: it follows the terminal background, so it reads on light and dark alike. Naming a theme replaces it with a fixed set of colours, drawn from the presets of [bezel](https://github.com/lucasassuncao/bezel), the TUI library vivi is built on: `default`, `plain`, `terminal` and `mint`.
 
 ```bash
 vivi --list-themes
-vivi --theme grape
+vivi --theme mint
 export VIVI_THEME=mint    # vivi has no config file; the environment is the preference
 ```
 

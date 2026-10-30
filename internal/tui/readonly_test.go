@@ -85,7 +85,7 @@ func TestTheLegendDropsWritesButTheHelpExplainsThem(t *testing.T) {
 
 	for _, e := range h.m.legend() {
 		if e.Needs == ui.CapWrite {
-			t.Errorf("the legend still offers %q in a read-only session", e.Help().Key)
+			t.Errorf("the legend still offers %q in a read-only session", e.Help.Key)
 		}
 	}
 

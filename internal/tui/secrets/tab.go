@@ -262,12 +262,12 @@ func (m *Model) actions(reveal, take, remove legend.Entry, inPane bool) []legend
 		out = append(out, reveal, take)
 	}
 	if m.HasSecret() {
-		out = append(out, legend.New("e", "edit", ui.CapWrite))
+		out = append(out, ui.WriteKey("e", "edit"))
 	}
 	// Creating lands in the folder the tree cursor is in, so it belongs to the
 	// list. Offered beside the field keys it read as adding a field.
 	if !inPane && m.CanCreateHere() {
-		out = append(out, legend.New("a", "create", ui.CapWrite))
+		out = append(out, ui.WriteKey("a", "create"))
 	}
 	if m.HasVersions() {
 		out = append(out, legend.New("v", "versions"))

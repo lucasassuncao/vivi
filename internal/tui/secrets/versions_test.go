@@ -193,11 +193,11 @@ func TestDestroySecretIsNotOfferedOnKV1(t *testing.T) {
 	}
 	_, keys := h.m.Legend(h.ctx)
 	for _, e := range keys {
-		if e.Help().Key == "M" {
+		if e.Help.Key == "M" {
 			t.Fatal("the legend offers M on a KV v1 secret")
 		}
-		if e.Help().Key == "d" && e.Help().Desc != "delete" {
-			t.Fatalf("a KV v1 delete is final, but the legend says %q", e.Help().Desc)
+		if e.Help.Key == "d" && e.Help.Desc != "delete" {
+			t.Fatalf("a KV v1 delete is final, but the legend says %q", e.Help.Desc)
 		}
 	}
 }

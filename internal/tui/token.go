@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/lucasassuncao/bezel/draw"
 	"strings"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -36,11 +37,11 @@ func (m *Model) renderToken(bodyHeight int) string {
 	// configured the auth method, so none of them is drawn as it arrived.
 	rows := [][2]string{
 		{"server", draw.Sanitize(m.server.Address)},
-		{"namespace", draw.OrDash(draw.Sanitize(m.server.Namespace))},
-		{"display name", draw.OrDash(draw.Sanitize(m.token.DisplayName))},
-		{"accessor", draw.OrDash(draw.Sanitize(m.token.Accessor))},
-		{"entity", draw.OrDash(draw.Sanitize(m.token.EntityID))},
-		{"ttl", draw.ShortDuration(m.token.TTL)},
+		{"namespace", orDash(draw.Sanitize(m.server.Namespace))},
+		{"display name", orDash(draw.Sanitize(m.token.DisplayName))},
+		{"accessor", orDash(draw.Sanitize(m.token.Accessor))},
+		{"entity", orDash(draw.Sanitize(m.token.EntityID))},
+		{"ttl", shortDuration(m.token.TTL)},
 		{"renewable", fmt.Sprint(m.token.Renewable)},
 	}
 	for _, r := range rows {
@@ -72,4 +73,39 @@ func (m *Model) renderToken(bodyHeight int) string {
 
 func (m *Model) reloadToken() tea.Cmd {
 	return m.loadToken()
+}
+
+// orDash is s, or a dash when it is empty.
+func orDash(s string) string {
+	if s == "" {
+		return "-"
+	}
+	return s
+}
+
+// shortDuration renders a lifetime the way a header has room for: the two
+// largest units that say anything, truncated rather than rounded, so a
+// countdown never shows more time than is left.
+func shortDuration(d time.Duration) string {
+	if d <= 0 {
+		return "0s"
+	}
+	switch {
+	case d >= 24*time.Hour:
+		days := d / (24 * time.Hour)
+		if h := (d % (24 * time.Hour)) / time.Hour; h > 0 {
+			return fmt.Sprintf("%dd%dh", days, h)
+		}
+		return fmt.Sprintf("%dd", days)
+	case d >= time.Hour:
+		hours := d / time.Hour
+		if mins := (d % time.Hour) / time.Minute; mins > 0 {
+			return fmt.Sprintf("%dh%dm", hours, mins)
+		}
+		return fmt.Sprintf("%dh", hours)
+	case d >= time.Minute:
+		return fmt.Sprintf("%dm", d/time.Minute)
+	default:
+		return fmt.Sprintf("%ds", d/time.Second)
+	}
 }
