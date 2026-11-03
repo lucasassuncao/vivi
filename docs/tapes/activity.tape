@@ -1,6 +1,6 @@
 # The Activity tab: every write this session made, and what it took to make one.
 #
-# This is the only tape that changes the Vault. It edits kv/app/stage/cache,
+# This tape changes the Vault, as destroy.tape does. It edits kv/app/stage/cache,
 # which no other tape shows, so the fixture the others record against is the
 # same before and after. `make vault-up` resets it either way.
 
