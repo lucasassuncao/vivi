@@ -1,391 +1,274 @@
-<!DOCTYPE html>
-<html lang="en" data-bs-theme="dark">
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="vivi, an interactive terminal browser for HashiCorp Vault: the parts of the web UI you actually use, without the browser." />
-  <title>vivi</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>vivi · Your Vault, without the browser</title>
+  <meta name="description" content="vivi is an interactive terminal browser for HashiCorp Vault: KV v1 and v2 secrets, policies and auth methods, masked until you ask, with confirmation that scales with the damage.">
+  <meta property="og:title" content="vivi · Your Vault, without the browser">
+  <meta property="og:description" content="An interactive terminal browser for HashiCorp Vault: the parts of the web UI you actually use, without the browser.">
+  <meta property="og:image" content="https://lucasassuncao.github.io/vivi/icons/vivi_icon_512.png">
+  <meta property="og:url" content="https://lucasassuncao.github.io/vivi/">
+  <link rel="icon" href="icons/vivi_icon_128.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="site.css">
+  <script src="theme.js"></script>
 </head>
 <body>
+<canvas id="backdrop" aria-hidden="true"></canvas>
 
-<!-- ── Navbar ── -->
-<nav class="navbar navbar-expand-lg fixed-top bg-dark border-bottom border-secondary">
-  <div class="container">
-    <a class="navbar-brand d-flex align-items-center gap-2 fw-bold" href="#">
-      <img src="image.png" height="28" alt="vivi logo" />
+<nav class="nav">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="vivi home">
+      <img src="icons/vivi_icon_128.png" alt="">
       vivi
     </a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
-      aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarContent">
-      <ul class="navbar-nav ms-auto gap-1">
-        <li class="nav-item"><a class="nav-link active" href="#">Home</a></li>
-        <li class="nav-item"><a class="nav-link" href="docs/">Docs</a></li>
-        <li class="nav-item">
-          <a class="nav-link" href="https://github.com/lucasassuncao/vivi" target="_blank" rel="noopener">
-            <i class="bi bi-github me-1"></i>GitHub
-          </a>
-        </li>
-      </ul>
-    </div>
+    <ul>
+      <li><a href="docs/">Docs</a></li>
+      <li><a href="docs/#/KEYS">Keys</a></li>
+      <li class="wide"><a href="#safety">Safety</a></li>
+      <li><a href="https://github.com/lucasassuncao/vivi">GitHub</a></li>
+      <li><button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch between light and dark" title="Switch between light and dark">◐</button></li>
+    </ul>
   </div>
 </nav>
 
-<!-- ── Hero ── -->
-<section class="py-5 text-center border-bottom border-secondary hero-section">
-  <div class="container">
-    <img src="image.png" alt="vivi logo" width="200" height="200" class="mb-4" />
-    <h1 class="fw-bold mb-2">VisualVault</h1>
-    <p class="text-secondary mb-3">or <code>vv</code> (<code>vivi</code>) for short</p>
-    <p class="lead text-secondary col-lg-7 mx-auto mb-4">
-      An interactive terminal browser for HashiCorp Vault. The parts of the web UI you actually use,
-      without the browser.
-    </p>
-    <div class="d-flex justify-content-center gap-3 flex-wrap">
-      <a class="btn btn-primary btn-lg" href="https://github.com/lucasassuncao/vivi/releases">
-        <i class="bi bi-download me-2"></i>Download latest
-      </a>
-      <a class="btn btn-outline-secondary btn-lg" href="docs/">
-        <i class="bi bi-book me-2"></i>Read the docs
-      </a>
-      <a class="btn btn-outline-secondary btn-lg" href="https://github.com/lucasassuncao/vivi" target="_blank" rel="noopener">
-        <i class="bi bi-github me-2"></i>View on GitHub
-      </a>
+<header class="hero">
+  <div class="wrap">
+    <img class="mascot" src="icons/vivi_icon_512.png" alt="vivi's mascot, looking through a magnifying glass" width="200" height="200">
+    <p class="aka"><b>VisualVault</b>, or <code>vivi</code> for short</p>
+    <h1>Your Vault,<br><span class="hl">without the browser</span>.<span class="caret" aria-hidden="true"></span></h1>
+    <p class="lede">An interactive terminal browser for HashiCorp Vault: KV v1 and v2 secrets, policies and auth methods. Values stay <em>masked until you ask</em>, and every write asks first, as loudly as the damage it can do.</p>
+    <div class="buttons">
+      <a class="btn primary" href="docs/">Get started</a>
+      <a class="btn" href="#demo">See it run</a>
+      <a class="btn" href="https://github.com/lucasassuncao/vivi/releases">Download</a>
+    </div>
+    <div class="install">
+      <code><span class="prompt">$ </span><span id="install-cmd">go install github.com/lucasassuncao/vivi@latest</span></code>
+      <button class="copy" type="button" data-copy="install-cmd">copy</button>
+    </div>
+
+    <div class="term showcase" id="demo">
+      <div class="bar"><i></i><i></i><i></i><span>vivi</span></div>
+      <img src="images/overview.gif" alt="vivi in half a minute: the Secrets, Policies, Auth and Activity tabs" width="1400" height="860">
+    </div>
+
+    <div class="stats">
+      <div><b>4</b><span>tabs: secrets, policies, auth, activity</span></div>
+      <div><b>2</b><span>KV engines: v1 and v2</span></div>
+      <div><b>2</b><span>gates: <code>y/n</code>, or type the path</span></div>
+      <div><b>0</b><span>config files: it reads the env, like <code>vault</code></span></div>
     </div>
   </div>
-</section>
+</header>
 
-<!-- ── Features ── -->
-<section id="features" class="py-5 border-bottom border-secondary">
-  <div class="container">
-    <h2 class="text-center fw-bold mb-4">Features</h2>
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+<main>
+  <section id="shape">
+    <div class="wrap split">
+      <div>
+        <div class="kicker">The shape of a session</div>
+        <h2>Point it at a Vault.<br>Read what is there.</h2>
+        <ol>
+          <li><b>Connect like the CLI.</b> <code>VAULT_ADDR</code> and <code>VAULT_TOKEN</code>, or <code>vault login</code>. The token also needs <code>read</code> on <code>sys/mounts</code>, which tells a v1 mount from a v2 one.</li>
+          <li><b>Walk a lazy tree.</b> The mounts first, and a path read the first time you open it, so ten thousand secrets start instantly.</li>
+          <li><b>Reveal or copy.</b> <code>r</code> shows one field until you move away; <code>y</code> copies it without ever drawing it.</li>
+          <li><b>Write with a net.</b> Every KV v2 save carries the version you opened, so a concurrent write is rejected instead of clobbered.</li>
+        </ol>
+      </div>
+      <div class="term">
+        <div class="bar"><i></i><i></i><i></i><span>shell</span></div>
+<pre class="code"><code><span class="k">export</span> <span class="t">VAULT_ADDR</span>=<span class="s">https://vault.corp:8200</span>
+<span class="k">export</span> <span class="t">VAULT_TOKEN</span>=<span class="s">...</span>        <span class="c"># or: vault login</span>
+<span class="k">export</span> <span class="t">VAULT_NAMESPACE</span>=<span class="s">...</span>    <span class="c"># Vault Enterprise only</span>
 
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-diagram-3 fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">Lazy tree</h5>
-            <p class="card-text text-secondary">Opening it lists the mounts and nothing else. A path is read the first time you expand it, so a Vault with ten thousand secrets starts instantly.</p>
-          </div>
+<span class="f">vivi</span>                          <span class="c"># browse</span>
+<span class="f">vivi</span> --read-only=prod         <span class="c"># refuse writes on PROD</span></code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="tabs">
+    <div class="wrap">
+      <div class="kicker">Four tabs</div>
+      <h2>One tab for each question you bring to a Vault.</h2>
+      <p class="sub">Each recording is a real session against the seeded throwaway Vault that <code>make vault-up</code> starts.</p>
+      <div class="gallery">
+        <a class="card" href="docs/#/EXAMPLES?id=secrets">
+          <img loading="lazy" src="images/secrets.gif" alt="The Secrets tab: the tree, a masked secret, its versions and a diff">
+          <div><h3>secrets</h3><p>The lazy tree, masked values, four versions with a diff between two, and a KV v1 mount.</p></div>
+        </a>
+        <a class="card" href="docs/#/EXAMPLES?id=policies">
+          <img loading="lazy" src="images/policies.gif" alt="The Policies tab: a policy's HCL">
+          <div><h3>policies</h3><p>The HCL that decides what a token may do, copied whole or reached by name with <code>:policy</code>.</p></div>
+        </a>
+        <a class="card" href="docs/#/EXAMPLES?id=auth">
+          <img loading="lazy" src="images/auth.gif" alt="The Auth tab: methods, roles and the policies they grant">
+          <div><h3>auth</h3><p>The enabled methods, the roles under them, and a jump from a grant to the policy it names.</p></div>
+        </a>
+        <a class="card" href="docs/#/EXAMPLES?id=activity">
+          <img loading="lazy" src="images/activity.gif" alt="The Activity tab: the writes made this session">
+          <div><h3>activity</h3><p>Every write this session made: the operation, its result, its error. Never a secret's content.</p></div>
+        </a>
+      </div>
+      <p class="more"><a href="docs/#/EXAMPLES">Every recording, one per tab →</a></p>
+    </div>
+  </section>
+
+  <section id="safety">
+    <div class="wrap split media">
+      <div class="term">
+        <div class="bar"><i></i><i></i><i></i><span>vivi · destroying a version</span></div>
+        <img loading="lazy" src="images/destroy.gif" alt="Destroying a version: half the secret's name keeps the modal locked, the whole name unlocks it, and the secret stays in the listing with its version marked destroyed" width="1400" height="860">
+      </div>
+      <div>
+        <div class="kicker">Safety</div>
+        <h2>Confirmation scales with the damage.</h2>
+        <ol>
+          <li><b>A save asks <code>y/n</code>.</b> So does a soft-delete, which Vault can undo.</li>
+          <li><b>What cannot be undone, you type out.</b> Destroy, deleting the metadata, and any delete on a KV v1 mount.</li>
+          <li><b>Rollback destroys nothing.</b> It writes the old content as a new version, and the modal says so.</li>
+          <li><b>A session can refuse every write.</b> <code>--read-only</code> everywhere, or <code>--read-only=prod</code> only where the badge says <code>PROD</code>.</li>
+        </ol>
+        <p class="more" style="text-align:left"><a href="docs/#/SAFETY">Read about safety →</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="kicker">What is in the box</div>
+      <h2>The parts of the web UI you actually use.</h2>
+      <p class="sub">One binary, no runtime, and no state of its own on disk. Linux, macOS and Windows are built and tested on every change.</p>
+      <div class="features">
+        <div class="feature">
+          <h3><span>├</span> Lazy tree</h3>
+          <p>Opening it lists the mounts and nothing else. A path is read the first time you expand it.</p>
+        </div>
+        <div class="feature">
+          <h3><span>•</span> Masked by default</h3>
+          <p>Values render as dots until <code>r</code>, and the reveal is dropped the moment you navigate away.</p>
+        </div>
+        <div class="feature">
+          <h3><span>✎</span> In-panel editing</h3>
+          <p>A form that shows the JSON it will write. A field keeps the type the server gave it, and a pasted certificate keeps its lines.</p>
+        </div>
+        <div class="feature">
+          <h3><span>↺</span> Version history</h3>
+          <p>Read any version, diff two, roll back, soft-delete, undelete, destroy, or delete the metadata.</p>
+        </div>
+        <div class="feature">
+          <h3><span>⌕</span> Auditing</h3>
+          <p>Policies and auth methods, read-only. Every secret says what your token may do there, and which of your policies grants it.</p>
+        </div>
+        <div class="feature">
+          <h3><span>⊘</span> Honest about denial</h3>
+          <p>A path your token cannot list is shown as locked, never hidden. A browser that omits it is worthless for an audit.</p>
+        </div>
+        <div class="feature">
+          <h3><span>⚑</span> Knows where it is</h3>
+          <p>The header badges the environment, names the server version, warns on a standby or sealed node, and counts the token down.</p>
+        </div>
+        <div class="feature">
+          <h3><span>▤</span> KV v1 and v2</h3>
+          <p>v1 mounts degrade the interface instead of breaking it: no history, no rollback, and a delete that warns it is final.</p>
+        </div>
+        <div class="feature">
+          <h3><span>␛</span> Safe to draw</h3>
+          <p>A secret is text someone else wrote. Escape sequences and bidirectional overrides are shown, never run.</p>
+        </div>
+        <div class="feature">
+          <h3><span>:</span> A command line too</h3>
+          <p><code>:</code> lists what can run right now, with the key beside each entry, so the slow path teaches the fast one.</p>
+        </div>
+        <div class="feature">
+          <h3><span>⎘</span> Command Reference</h3>
+          <p>The address under the cursor and the <code>vault</code> commands that reach it, one click or one <code>:copy-</code> away.</p>
+        </div>
+        <div class="feature">
+          <h3><span>⇣</span> Self-update</h3>
+          <p><code>vivi self-update</code> installs the latest release, checked against its published checksum. No checksum, no install.</p>
         </div>
       </div>
+    </div>
+  </section>
 
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-eye-slash fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">Masked by default</h5>
-            <p class="card-text text-secondary">Values render as dots until you press <code>r</code>, and the reveal is dropped the moment you navigate away. <code>y</code> copies without ever drawing it.</p>
-          </div>
+  <section id="keys">
+    <div class="wrap">
+      <div class="kicker">Keys and commands</div>
+      <h2>Arrows move. Letters act.</h2>
+      <p class="sub">Navigation is arrows and <code>enter</code> everywhere, so nothing moves by accident. The mouse works too: tabs, rows and fields take a click.</p>
+      <div class="tables">
+        <div class="table">
+          <table>
+            <tbody>
+              <tr><td><code>↑</code> <code>↓</code></td><td>Move</td></tr>
+              <tr><td><code>→</code> <code>enter</code></td><td>Go further in: open a folder, or step into the detail pane</td></tr>
+              <tr><td><code>←</code> <code>esc</code></td><td>Come back out</td></tr>
+              <tr><td><code>tab</code> <code>1</code>-<code>4</code></td><td>Switch tab</td></tr>
+              <tr><td><code>/</code></td><td>Fuzzy filter over what is already loaded</td></tr>
+              <tr><td><code>r</code> <code>y</code></td><td>Reveal a value, or copy it without showing it</td></tr>
+              <tr><td><code>e</code> <code>a</code> <code>d</code></td><td>Edit, create, delete</td></tr>
+              <tr><td><code>v</code></td><td>The version list: diff, rollback, undelete, destroy</td></tr>
+              <tr><td><code>:</code></td><td>The command line, listing what can run here</td></tr>
+              <tr><td><code>?</code></td><td>Every key for where you are</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table">
+          <table>
+            <tbody>
+              <tr><td><code>vivi</code></td><td>Open the browser</td></tr>
+              <tr><td><code>vivi --read-only</code></td><td>Refuse every write, wherever this points</td></tr>
+              <tr><td><code>vivi --read-only=prod</code></td><td>Refuse them only where the badge says <code>PROD</code></td></tr>
+              <tr><td><code>vivi --theme &lt;name&gt;</code></td><td>Render with a named colour theme</td></tr>
+              <tr><td><code>vivi --list-themes</code></td><td>Browse the available themes</td></tr>
+              <tr><td><code>vivi --no-motion</code></td><td>Turn the animations off</td></tr>
+              <tr><td><code>vivi --no-mouse</code></td><td>Leave the mouse to the terminal</td></tr>
+              <tr><td><code>vivi self-update</code></td><td>Install the latest release, checksum-verified</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
+      <p class="more"><a href="docs/#/KEYS">Every key, per pane →</a></p>
+    </div>
+  </section>
 
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-pencil-square fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">In-panel editing</h5>
-            <p class="card-text text-secondary">Edit fields where you read them, in a form that shows the JSON it will write. A pasted certificate keeps its lines, and a field keeps the type the server gave it.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-shield-check fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">Check-and-set on save</h5>
-            <p class="card-text text-secondary">The save carries the version you opened. If someone wrote in the meantime the write is rejected, your edit is kept, and you choose what happens next.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-clock-history fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">Full version history</h5>
-            <p class="card-text text-secondary">Read any version, roll back, soft-delete, undelete, destroy, or delete the metadata, with confirmation that scales to the damage.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-columns-gap fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">Diff two versions</h5>
-            <p class="card-text text-secondary">Mark two versions with <code>space</code> and <code>d</code> compares them, masked, so you can see what changed without reading the values.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-search fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">Auditing</h5>
-            <p class="card-text text-secondary">Policies and auth methods, read-only, with a jump from a role straight to the policy it grants. Every secret says what your token may do there.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-shield-lock fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">Read-only mode</h5>
-            <p class="card-text text-secondary"><code>--read-only</code> refuses every write; <code>--read-only=prod</code> refuses them only where the badge says <code>PROD</code>. Nothing reaches the server.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-lock fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">Honest about denial</h5>
-            <p class="card-text text-secondary">A path your token cannot list is shown as locked, never hidden. A browser that quietly omits what you cannot see is worthless for an audit.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-exclamation-triangle fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">Knows where it is</h5>
-            <p class="card-text text-secondary">The header badges the environment, names the server version, warns on a standby or sealed node, and counts the token down, loudly under fifteen minutes.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-layers fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">KV v1 and v2</h5>
-            <p class="card-text text-secondary">v1 mounts degrade the interface instead of breaking it: no history, no rollback, and a delete that warns it cannot be undone.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-terminal fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">A command line too</h5>
-            <p class="card-text text-secondary"><code>:</code> lists what can run right now with the keystroke beside each entry, so the slow path teaches the fast one.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-palette fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">56 themes</h5>
-            <p class="card-text text-secondary">The palette follows your terminal background by default. <code>--theme</code> replaces it with a fixed one, and <code>--list-themes</code> shows them.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="col">
-        <div class="card h-100 bg-body-secondary border-secondary">
-          <div class="card-body">
-            <i class="bi bi-arrow-repeat fs-2 text-primary mb-3 d-block"></i>
-            <h5 class="card-title">Self-update</h5>
-            <p class="card-text text-secondary"><code>vivi self-update</code> installs the latest release, checked against the checksum published with it. No checksum, no install.</p>
-          </div>
-        </div>
-      </div>
-
+  <div class="wrap cta">
+    <h2>Try it without a Vault.</h2>
+    <p class="sub" style="margin-inline:auto">The repository ships a throwaway, seeded Vault: both KV versions, a secret with a destroyed version, policies, roles, and a subtree a limited token cannot read.</p>
+    <div class="install" style="margin-bottom:28px">
+      <code><span class="prompt">$ </span><span id="sandbox-cmd">make vault-up</span></code>
+      <button class="copy" type="button" data-copy="sandbox-cmd">copy</button>
+    </div>
+    <div class="buttons">
+      <a class="btn primary" href="docs/">Get started</a>
+      <a class="btn" href="docs/#/DEVELOPMENT">The sandbox Vault</a>
+      <a class="btn" href="https://github.com/lucasassuncao/vivi">Star on GitHub</a>
     </div>
   </div>
-</section>
+</main>
 
-<!-- ── Installation ── -->
-<section id="install" class="py-5 border-bottom border-secondary">
-  <div class="container">
-    <h2 class="fw-bold mb-4">Installation</h2>
-
-    <ul class="nav nav-tabs mb-3" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-install" type="button" role="tab">
-          go install
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-download" type="button" role="tab">
-          Download
-        </button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-build" type="button" role="tab">
-          Build from source
-        </button>
-      </li>
-    </ul>
-
-    <div class="tab-content">
-      <div class="tab-pane fade show active" id="tab-install" role="tabpanel">
-        <div class="code-block position-relative">
-          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-          <pre>go install github.com/lucasassuncao/vivi@latest</pre>
-        </div>
-      </div>
-      <div class="tab-pane fade" id="tab-download" role="tabpanel">
-        <div class="code-block position-relative">
-          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-          <pre><span class="cmt"># 1. Download the binary for your platform from the releases page</span>
-<span class="cmt">#    https://github.com/lucasassuncao/vivi/releases</span>
-
-<span class="cmt"># 2. Put it on your PATH, then keep it current with:</span>
-vivi self-update</pre>
-        </div>
-      </div>
-      <div class="tab-pane fade" id="tab-build" role="tabpanel">
-        <div class="code-block position-relative">
-          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-          <pre>git clone https://github.com/lucasassuncao/vivi.git
-cd vivi
-make build   <span class="cmt"># goreleaser, current platform</span>
-make install <span class="cmt"># go install</span></pre>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ── Quick start ── -->
-<section id="quickstart" class="py-5 border-bottom border-secondary">
-  <div class="container">
-    <h2 class="fw-bold mb-2">Quick start</h2>
-    <p class="text-secondary mb-4">vivi authenticates exactly like the <code>vault</code> CLI, from the environment. It has no configuration file of its own.</p>
-    <div class="code-block position-relative">
-      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-      <pre>export <span class="key">VAULT_ADDR</span>=<span class="str">https://vault.corp:8200</span>
-export <span class="key">VAULT_TOKEN</span>=<span class="str">...</span>          <span class="cmt"># or: vault login</span>
-export <span class="key">VAULT_NAMESPACE</span>=<span class="str">...</span>      <span class="cmt"># optional, Vault Enterprise</span>
-
-vivi                            <span class="cmt"># browse</span>
-vivi --read-only=prod           <span class="cmt"># refuse writes where the badge says PROD</span></pre>
-    </div>
-
-    <p class="text-secondary mt-4 mb-2">The token needs <code>read</code> on <code>sys/mounts</code> on top of the paths you want to browse: that is what tells a KV v1 mount from a v2 one.</p>
-    <div class="code-block position-relative">
-      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-      <pre><span class="kw">path</span> <span class="str">"sys/mounts"</span> {
-  <span class="key">capabilities</span> = [<span class="str">"read"</span>]
-}</pre>
-    </div>
-  </div>
-</section>
-
-<!-- ── Try it ── -->
-<section id="sandbox" class="py-5 border-bottom border-secondary">
-  <div class="container">
-    <h2 class="fw-bold mb-2">Try it without a Vault</h2>
-    <p class="text-secondary mb-4">The repository ships a throwaway Vault, seeded with both KV versions, a deep tree, a secret whose history includes a deleted and a destroyed version, policies, auth methods with roles, and a subtree a limited token cannot read.</p>
-    <div class="code-block position-relative">
-      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-      <pre>make vault-up    <span class="cmt"># docker compose up, then seed it</span>
-make vault-down  <span class="cmt"># stop it and discard the data</span></pre>
-    </div>
-  </div>
-</section>
-
-<!-- ── Keys ── -->
-<section id="keys" class="py-5 border-bottom border-secondary">
-  <div class="container">
-    <h2 class="fw-bold mb-4">Keys</h2>
-    <div class="table-responsive">
-      <table class="table table-dark table-bordered table-hover align-middle">
-        <thead>
-          <tr>
-            <th>Key</th>
-            <th>Does</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td><code>↑</code> <code>↓</code> <code>→</code> <code>←</code></td><td>Move, go further in, come back out</td></tr>
-          <tr><td><code>/</code></td><td>Fuzzy filter over what is already loaded</td></tr>
-          <tr><td><code>r</code></td><td>Reveal, without copying</td></tr>
-          <tr><td><code>y</code></td><td>Copy, without showing it</td></tr>
-          <tr><td><code>e</code> · <code>a</code></td><td>Edit a secret · create one</td></tr>
-          <tr><td><code>v</code></td><td>Version list: diff, rollback, undelete, destroy</td></tr>
-          <tr><td><code>d</code></td><td>Delete the version on screen (in the version list, <code>d</code> diffs instead)</td></tr>
-          <tr><td><code>i</code></td><td>Token information, where it can also be renewed</td></tr>
-          <tr><td><code>:</code></td><td>The command line, listing what can run right now</td></tr>
-          <tr><td><code>?</code></td><td>The contextual key panel</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="text-secondary mb-0">Every key, per pane, is in <a href="docs/#/KEYS.md">the keys reference</a>.</p>
-  </div>
-</section>
-
-<!-- ── Commands ── -->
-<section id="commands" class="py-5">
-  <div class="container">
-    <h2 class="fw-bold mb-4">Commands</h2>
-    <div class="table-responsive">
-      <table class="table table-dark table-bordered table-hover align-middle">
-        <thead>
-          <tr>
-            <th>Command</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td><code>vivi</code></td><td>Opens the browser</td></tr>
-          <tr><td><code>vivi --read-only</code></td><td>Refuses every write, wherever this points</td></tr>
-          <tr><td><code>vivi --read-only=prod</code></td><td>Refuses them only where the badge says <code>PROD</code></td></tr>
-          <tr><td><code>vivi --theme &lt;name&gt;</code></td><td>Renders with a named colour theme</td></tr>
-          <tr><td><code>vivi --list-themes</code></td><td>Lists the available themes</td></tr>
-          <tr><td><code>vivi --version</code></td><td>Prints the version</td></tr>
-          <tr><td><code>vivi self-update</code></td><td>Installs the latest release from GitHub, checksum-verified</td></tr>
-          <tr><td><code>vivi self-update --list</code></td><td>Shows the available releases</td></tr>
-          <tr><td><code>vivi self-update --version &lt;tag&gt;</code></td><td>Installs one release by tag instead of the latest</td></tr>
-          <tr><td><code>vivi self-update --prerelease</code></td><td>Includes rc/beta/alpha releases</td></tr>
-          <tr><td><code>vivi self-update --allow-unverified</code></td><td>Installs a release that publishes no checksum</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<!-- ── Footer ── -->
-<footer class="py-4 text-center text-secondary border-top border-secondary">
-  <div class="container">
-    <p class="mb-0">
-      Built with ❤️ by <a href="https://github.com/lucasassuncao" class="text-secondary" target="_blank" rel="noopener">lucasassuncao</a>
-      &nbsp;·&nbsp;
-      <a href="https://github.com/lucasassuncao/vivi" class="text-secondary" target="_blank" rel="noopener">GitHub</a>
-      &nbsp;·&nbsp;
-      <a href="https://github.com/lucasassuncao/vivi/releases" class="text-secondary" target="_blank" rel="noopener">Releases</a>
-      &nbsp;·&nbsp;
-      <a href="https://github.com/lucasassuncao/vivi/blob/main/LICENSE" class="text-secondary" target="_blank" rel="noopener">Apache 2.0 License</a>
-    </p>
+<footer>
+  <div class="wrap">
+    vivi is Apache 2.0 licensed · <a href="https://github.com/lucasassuncao/vivi">github.com/lucasassuncao/vivi</a>
+    <p class="made">made with <span class="heart" role="img" aria-label="love">❤️</span> by <a href="https://github.com/lucasassuncao">Lucas Assunção</a></p>
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  function copyCode(btn) {
-    const pre = btn.closest('.code-block').querySelector('pre');
-    navigator.clipboard.writeText(pre.innerText).then(() => {
-      btn.textContent = 'Copied!';
-      setTimeout(() => btn.textContent = 'Copy', 2000);
+  document.querySelectorAll("[data-copy]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var text = document.getElementById(b.dataset.copy).textContent;
+      navigator.clipboard.writeText(text).then(function () {
+        b.textContent = "copied";
+        setTimeout(function () { b.textContent = "copy"; }, 1500);
+      });
     });
-  }
+  });
 </script>
-
+<script src="backdrop.js"></script>
 </body>
 </html>

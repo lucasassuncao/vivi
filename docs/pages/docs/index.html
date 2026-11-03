@@ -1,38 +1,55 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>vivi docs</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/dark.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css" />
-  <link rel="stylesheet" href="custom.css" />
+  <meta name="description" content="Guides and reference for vivi, an interactive terminal browser for HashiCorp Vault.">
+  <link rel="icon" href="../icons/vivi_icon_128.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4.13.1/lib/themes/vue.css">
+  <link rel="stylesheet" href="docs.css">
+  <script src="../theme.js"></script>
 </head>
 <body>
   <div id="app"></div>
   <script>
     window.$docsify = {
-      name: 'vivi',
-      repo: 'https://github.com/lucasassuncao/vivi',
-      basePath: window.location.hostname === 'localhost' ? '../../' : '../',
-      homepage: 'README.md',
+      name: '<img src="../icons/vivi_icon_128.png" alt=""><span>vivi</span>',
+      nameLink: "../",
+      repo: "lucasassuncao/vivi",
+      basePath: "../",
+      homepage: "README.md",
       loadSidebar: true,
       subMaxLevel: 2,
-      search: {
-        noData: 'No results.',
-        placeholder: 'Search docs…',
-      },
       relativePath: true,
-      themeColor: '#58a6ff',
-    }
+      search: { placeholder: "Search the docs", noData: "Nothing found", depth: 3 },
+      copyCode: { buttonText: "copy", successText: "copied" },
+      plugins: [
+        function (hook) {
+          // The light/dark switch sits under the logo, as on the landing page.
+          hook.mounted(function () {
+            var button = document.createElement("button");
+            button.className = "theme-toggle";
+            button.type = "button";
+            button.setAttribute("data-theme-toggle", "");
+            button.textContent = "◐ light / dark";
+            document.querySelector(".sidebar > h1").after(button);
+          });
+        }
+      ]
+    };
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4.13.1/lib/docsify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4.13.1/lib/plugins/search.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify-copy-code@2.1.1/dist/docsify-copy-code.min.js"></script>
   <!-- language components register on docsify's own Prism instance -->
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-go.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-hcl.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-yaml.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-go.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-hcl.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-yaml.min.js"></script>
 </body>
 </html>

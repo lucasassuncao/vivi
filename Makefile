@@ -10,17 +10,29 @@
 # sees is one of tools.mk's. Without this, that becomes the default goal.
 .DEFAULT_GOAL := help
 
+# A recipe that needs more than portable commands calls a script, which exists
+# in scripts/bash and scripts/pwsh with the same name and arguments.
 ifeq ($(OS),Windows_NT)
-EXE := .exe
+EXE        := .exe
+SCRIPT_DIR := scripts/pwsh
+SCRIPT_EXT := .ps1
+SCRIPT_RUN := pwsh -NoProfile -ExecutionPolicy Bypass -File
 else
-EXE :=
+EXE        :=
+SCRIPT_DIR := scripts/bash
+SCRIPT_EXT := .sh
+SCRIPT_RUN := bash
 endif
+
+# $(call script,name) is the command that runs this OS's version of a script.
+script = $(SCRIPT_RUN) $(SCRIPT_DIR)/$(1)$(SCRIPT_EXT)
 
 # Project variables
 BINARY_NAME := vivi
 BUILD_DIR   := bin
 MAIN_PATH   := main.go
 SBOM_FILE   := sbom.json
+SITE_DIR    := site
 
 # Where the pinned tools land; tools.mk explains why they are not taken from PATH.
 GOBIN_DIR := $(CURDIR)/.gobin
@@ -36,6 +48,7 @@ MAKE_DIR := scripts/make
 include $(MAKE_DIR)/tools.mk
 include $(MAKE_DIR)/go.mk
 include $(MAKE_DIR)/build.mk
+include $(MAKE_DIR)/docs.mk
 include $(MAKE_DIR)/test.mk
 include $(MAKE_DIR)/security.mk
 include $(MAKE_DIR)/vault.mk
@@ -69,3 +82,5 @@ clean-all: clean-tools clean-buildcache clean-testcache clean-modcache ## Remove
 	@rm -rf $(COVERAGE_DIR)
 	@echo "Removing $(SBOM_FILE)..."
 	@rm -rf $(SBOM_FILE)
+	@echo "Removing $(SITE_DIR)..."
+	@rm -rf $(SITE_DIR)

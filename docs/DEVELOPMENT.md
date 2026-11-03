@@ -83,24 +83,30 @@ The daemon is the host's (docker-outside-of-docker) so `make vault-up` inside th
 
 ## The documentation site
 
-[lucasassuncao.github.io/vivi](https://lucasassuncao.github.io/vivi/) is a static landing page plus a [docsify](https://docsify.js.org) app that renders the very markdown in this directory. Nothing is generated: the site is assembled by copying.
+[lucasassuncao.github.io/vivi](https://lucasassuncao.github.io/vivi/) is a static landing page plus a [docsify](https://docsify.js.org) app that renders the very markdown in this directory. It shares its look with the movelooper and bezel sites. Nothing is generated: the site is assembled by copying.
 
 ```plain
 docs/
   *.md              the pages, which GitHub also renders here
   _sidebar.md       the docsify navigation
   images/           the recordings and the logo, drawn by EXAMPLES.md and the repository README
-  pages/            the site root, uploaded to GitHub Pages
+  icons/            the logo at the sizes the site draws it
+  pages/            the site root
     index.html      the landing page
-    style.css
-    image.png       the logo, which the static page needs at a fixed path
-    images/         copied here by CI, never committed
+    site.css        its styles
+    theme.js        the light/dark switch, shared with the docs
+    backdrop.js     the drifting fields behind the landing page
     docs/
       index.html    the docsify app
-      custom.css
+      docs.css      docsify's vue theme, recoloured to match
 ```
 
-The `pages` job in CI assembles it before uploading: the markdown, `_sidebar.md` and `images/` all go to `docs/pages/`, the site root docsify reads from. Nothing under `docs/` is stored twice in the repository. The logo is the exception, and it is one because the landing page is static HTML that has to find it whether or not the copy has run: it keeps its own copy in `docs/pages/`, and the repository README reaches down to it.
+```bash
+make stage-docs     # assemble it into ./site
+make serve-docs     # assemble it and serve it on http://localhost:8080
+```
+
+`make stage-docs` copies `docs/pages/` into `site/` and puts the markdown, `_sidebar.md`, `images/` and `icons/` beside it, at the site root docsify reads from. The `pages` job in CI runs the same target and uploads `site/`, so the preview and the published site are one layout. Nothing under `docs/` is stored twice in the repository.
 
 ### Images in the docs
 
@@ -108,10 +114,10 @@ Write them as markdown, `![alt](images/x.gif)`, with no `../` in front, and they
 
 docsify rewrites a markdown image against `basePath`, the directory it reads the markdown from: `docs/` when the app is served from a checkout, the site root on Pages. A path here therefore means `docs/images/` in the repository and `images/` at the site root, and the copy above puts the directory in both. A `../` in front breaks that symmetry, and an `<img>` tag escapes the rewrite entirely: raw HTML is left as written, so the browser resolves it against the URL the app is served from, which is `/docs/` and never where the markdown lives. Size a markdown image with docsify's own syntax instead, `![alt](images/x.png ':size=313')`.
 
-The landing page is ordinary static HTML sitting at the site root, which is `docs/pages/` in the repository. Its own assets, the logo, live beside it and are committed, so it renders the same opened from disk as it does deployed.
+The landing page is ordinary static HTML at the site root. It reads the logo from `icons/` and the recordings from `images/`, which only exist there once the site is staged, so preview it with `make serve-docs` rather than opening `docs/pages/index.html` from disk.
 
-docsify fetches its markdown at runtime, which a browser will not do for a `file://` page: opening `docs/pages/docs/index.html` from the file manager renders **404 - Not found** however correct the files are. The site is read where it is published, or from a local HTTP server with the same copy CI makes.
+docsify fetches its markdown at runtime, which a browser will not do for a `file://` page: opening `docs/pages/docs/index.html` from the file manager renders **404 - Not found** however correct the files are. The site is read where it is published, or from `make serve-docs`.
 
-A page added to `docs/` needs a line in `_sidebar.md` to appear in the navigation. A link from one page to another is relative (`KEYS.md`), and a link to anything outside `docs/` has to be an absolute GitHub URL: the site root is `docs/pages/`, so `../` climbs out of it and 404s.
+A page added to `docs/` needs a line in `_sidebar.md` to appear in the navigation. A link from one page to another is relative (`KEYS.md`), and a link to anything outside `docs/` has to be an absolute GitHub URL: the site root is not the repository, so `../` climbs out of it and 404s.
 
 The site deploys from `main` after the `Checks` job passes, never from a pull request.

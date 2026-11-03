@@ -7,6 +7,7 @@ GOCOBERTURA_VERSION   := latest
 SYFT_VERSION          := v1.51.1
 GRYPE_VERSION         := v0.118.0
 GOVULNCHECK_VERSION   := v1.9.0
+CADDY_VERSION         := v2.11.7
 
 # Tools live in ./.gobin (gitignored) so every target runs the pinned version,
 # not whatever PATH has. Each is a file target, installed on first use; bumping
@@ -20,8 +21,10 @@ GOCOBERTURA := $(GOBIN_DIR)/gocover-cobertura$(EXE)
 SYFT        := $(GOBIN_DIR)/syft$(EXE)
 GRYPE       := $(GOBIN_DIR)/grype$(EXE)
 GOVULNCHECK := $(GOBIN_DIR)/govulncheck$(EXE)
+# caddy serves the docs site locally.
+CADDY       := $(GOBIN_DIR)/caddy$(EXE)
 
-TOOLS := $(GORELEASER) $(GOLANGCI) $(GOTESTSUM) $(GOSEC) $(GOCOBERTURA) $(SYFT) $(GRYPE) $(GOVULNCHECK)
+TOOLS := $(GORELEASER) $(GOLANGCI) $(GOTESTSUM) $(GOSEC) $(GOCOBERTURA) $(SYFT) $(GRYPE) $(GOVULNCHECK) $(CADDY)
 
 # `go install` has no destination flag, only GOBIN. Exported for the tool rules
 # alone: file-wide it would also redirect `install`, which must put vivi in the
@@ -61,6 +64,10 @@ $(GRYPE):
 $(GOVULNCHECK):
 	@echo "Installing govulncheck $(GOVULNCHECK_VERSION)..."
 	@go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+
+$(CADDY):
+	@echo "Installing caddy $(CADDY_VERSION)..."
+	@go install github.com/caddyserver/caddy/v2/cmd/caddy@$(CADDY_VERSION)
 
 tools: $(TOOLS) ## Install every pinned tool into ./.gobin
 	@echo "Tools installed in $(GOBIN_DIR)"

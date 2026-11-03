@@ -59,5 +59,8 @@ archived/
 # Generated SBOM
 sbom.json
 
+# Docs site, assembled by `make stage-docs` for serve-docs and GitHub Pages
+site/
+
 # Superpowers documentation
 docs/superpowers/

@@ -256,25 +256,15 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      # docs/pages/ is the site root, so the markdown is copied into it: docsify
-      # reads it from there at runtime, while the repository keeps one copy of
-      # each page in docs/ where GitHub renders it.
-      #
-      # The images go beside the markdown, not beside the app: docsify resolves
-      # an image against basePath, the directory it reads the markdown from. So
-      # "images/x.gif" means docs/images/ in the repository and images/ at the
-      # site root here, and one spelling is right in an editor's preview, in a
-      # local docsify and in the deployed page alike.
-      - name: Prepare site content
-        run: |
-          cp docs/_sidebar.md docs/pages/
-          find docs -maxdepth 1 -name '*.md' -exec cp {} docs/pages/ \;
-          cp -r docs/images docs/pages/
+      # The same copy `make serve-docs` previews: docs/pages/ as the root, with
+      # the markdown, images/ and icons/ beside it. DEVELOPMENT.md says why there.
+      - name: Stage site
+        run: make stage-docs
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/pages/
+          path: site/
 
       - name: Deploy to GitHub Pages
         id: deployment

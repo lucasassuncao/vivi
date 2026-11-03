@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD033 -->
 <p align="center">
-  <img src="docs/pages/image.png" alt="VisualVault logo" width="313" height="313">
+  <img src="docs/images/image.png" alt="VisualVault logo" width="313" height="313">
 </p>
 
 <h1 align="center">VisualVault</h1>
