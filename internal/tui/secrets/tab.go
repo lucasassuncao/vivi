@@ -187,6 +187,18 @@ func (m *Model) Titles() (left, right string) {
 	return left, "Detail"
 }
 
+// TitlePath is the path the detail's title names, the same one Titles gives:
+// false while the title says something else, an editor's or no secret.
+func (m *Model) TitlePath() (string, bool) {
+	if m.currentEditor() != nil {
+		return "", false
+	}
+	if n := m.shownNode(); n != nil {
+		return n.fullPath(), true
+	}
+	return "", false
+}
+
 func (m *Model) RenderList(width, height int, ctx ui.Context) string {
 	m.adopt(ctx)
 	return m.renderTree(width, height)

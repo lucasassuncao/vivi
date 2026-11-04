@@ -74,6 +74,11 @@ func (m *Model) panes() map[string]shell.Pane {
 		}},
 		paneDetail: {Title: draw.Sanitize(right), Body: func(layout.Rect) string { return m.detailView() }},
 	}
+	if parts, ok := m.crumbParts(); ok {
+		detail := panes[paneDetail]
+		detail.Title = m.crumbs(parts).View(m.st.Shell())
+		panes[paneDetail] = detail
+	}
 	if m.sh.Rect(paneCopy) != (layout.Rect{}) {
 		panes[paneCopy] = shell.Pane{Title: copyPanelTitle, Bottom: m.copyPanelHint(), Body: func(r layout.Rect) string {
 			return strings.Join(m.copyLines(r.W), "\n")

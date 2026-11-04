@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/lucasassuncao/bezel/draw"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 )
 
@@ -147,5 +148,30 @@ func TestNoMouseLeavesTheMouseToTheTerminal(t *testing.T) {
 	}
 	if strings.Contains(h.view(), copyPanelHint) {
 		t.Errorf("the Command Reference still says to hold shift:\n%s", h.view())
+	}
+}
+
+// The edge between the list and the detail drags: the columns follow the
+// pointer, and the detail is sized again for its new width.
+func TestDraggingTheEdgeResizesTheColumns(t *testing.T) {
+	h := newHarness(t)
+	list := h.m.sh.Rect(paneList)
+	edge, y := list.X+list.W-1, list.Y+3
+
+	_, cmd := h.m.Update(tea.MouseClickMsg{X: edge, Y: y, Button: tea.MouseLeft})
+	h.run(cmd)
+	_, cmd = h.m.Update(tea.MouseMotionMsg{X: edge + 8, Y: y, Button: tea.MouseLeft})
+	h.run(cmd)
+	_, cmd = h.m.Update(tea.MouseReleaseMsg{X: edge + 8, Y: y})
+	h.run(cmd)
+
+	if got := h.m.sh.Rect(paneList).W; got != list.W+8 {
+		t.Fatalf("the list is %d wide after the drag, want %d", got, list.W+8)
+	}
+	if w, _ := h.m.detailGeometry(); w != draw.InnerRect(h.m.sh.Rect(paneDetail)).W {
+		t.Errorf("the detail is sized for %d columns, not its pane's", w)
+	}
+	if h.m.focus != ui.FocusList {
+		t.Error("pressing the edge moved the focus")
 	}
 }

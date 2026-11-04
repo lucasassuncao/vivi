@@ -87,7 +87,8 @@ func leftColumn() layout.Leaf {
 }
 
 // layout is this frame's tree. Below narrowLimit only the focused pane is
-// drawn: stepping into a secret replaces the list and esc puts it back.
+// drawn: stepping into a secret replaces the list and esc puts it back. The
+// mouse drags the edge between the columns.
 func (m *Model) layout() layout.Node {
 	keep := paneList
 	if m.focus == ui.FocusDetail {
@@ -97,7 +98,7 @@ func (m *Model) layout() layout.Node {
 	if h := m.copyPanelHeight(); h > 0 {
 		right = layout.Rows(layout.Fill(paneDetail), layout.Fixed(paneCopy, layout.Lines(h)).Info())
 	}
-	return layout.Columns(leftColumn(), right).Collapse(narrowLimit, keep)
+	return layout.Columns(leftColumn(), right).Collapse(narrowLimit, keep).Resizable()
 }
 
 // referenceSlide is how long the Command Reference takes to slide in or out.

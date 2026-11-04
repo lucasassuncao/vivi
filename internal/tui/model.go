@@ -145,6 +145,8 @@ type Model struct {
 
 	// noMouse is --no-mouse: the terminal keeps the mouse.
 	noMouse bool
+	// dragging is a press on the edge between the columns, until its release.
+	dragging bool
 
 	// bannerCmds are the expiry timers of banners set during this Update, so
 	// a handler that has no command to return still gets its banner cleared.
@@ -304,11 +306,11 @@ func (m *Model) update(msg tea.Msg) tea.Cmd {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.sh, _ = m.sh.Update(msg)
-		m.relayout()
-		// The one widget sized to the terminal rather than measured at render:
-		// a text area has to know its width to wrap and its height to scroll,
-		// and it is the Secrets tab that holds one.
-		m.secretsTab.Resize(m.contextIn(m.bodyHeight()))
+		m.resized()
+		return nil
+
+	case shell.ResizedMsg:
+		m.resized()
 		return nil
 
 	case clockMsg:
@@ -339,6 +341,14 @@ func (m *Model) update(msg tea.Msg) tea.Cmd {
 		return r.Cmd
 	}
 	return m.handleData(msg)
+}
+
+// resized lays the panes out again after the terminal or an edge between them
+// moved. The text area is the one widget sized to the terminal rather than
+// measured at render, and it is the Secrets tab that holds one.
+func (m *Model) resized() {
+	m.relayout()
+	m.secretsTab.Resize(m.contextIn(m.bodyHeight()))
 }
 
 // syncDetail projects the model onto the detail viewport, whose only state of

@@ -25,6 +25,9 @@ func (m *Model) mouse(msg tea.MouseMsg) tea.Cmd {
 	if m.currentTab().Captures() {
 		return nil
 	}
+	if cmd, ok := m.dragEdge(msg); ok {
+		return cmd
+	}
 	switch msg := msg.(type) {
 	case tea.MouseClickMsg:
 		if msg.Button == tea.MouseLeft {
@@ -34,6 +37,40 @@ func (m *Model) mouse(msg tea.MouseMsg) tea.Cmd {
 		return m.wheel(msg)
 	}
 	return nil
+}
+
+// dragEdge hands the shell a press on the edge between the columns and the
+// drag that follows it, which the shell turns into new widths.
+func (m *Model) dragEdge(msg tea.MouseMsg) (tea.Cmd, bool) {
+	switch msg.(type) {
+	case tea.MouseClickMsg:
+		if !m.onEdge(msg.Mouse()) {
+			return nil, false
+		}
+		m.dragging = true
+	case tea.MouseMotionMsg, tea.MouseReleaseMsg:
+		if !m.dragging {
+			return nil, false
+		}
+		_, released := msg.(tea.MouseReleaseMsg)
+		m.dragging = !released
+	default:
+		return nil, false
+	}
+	var r bezel.Result
+	m.sh, r = m.sh.Update(msg)
+	return r.Cmd, true
+}
+
+// onEdge reports a left press on the list's right border or the right
+// column's left one, the two cells either side of the edge.
+func (m *Model) onEdge(at tea.Mouse) bool {
+	list, right := m.sh.Rect(paneList), m.sh.Rect(paneDetail)
+	if at.Button != tea.MouseLeft || list.W == 0 || right.W == 0 {
+		return false
+	}
+	edge := list.X + list.W
+	return at.Y >= list.Y && at.Y < list.Y+list.H && (at.X == edge-1 || at.X == edge)
 }
 
 // click is a left click on the tab strip or on a pane.
@@ -55,6 +92,10 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 		m.focus = ui.FocusList
 		return m.currentTab().ClickList(in.Y, draw.InnerRect(m.sh.Rect(paneList)).H, m.uiContext())
 	case paneDetail:
+		if in.Y < 0 {
+			cmd, _ := m.clickTitle(at.X) // the top edge, where the title is a path
+			return cmd
+		}
 		m.focus = ui.FocusDetail
 		return m.currentTab().ClickDetail(in.Y+m.detail.YOffset(), m.uiContext())
 	case paneCopy:
