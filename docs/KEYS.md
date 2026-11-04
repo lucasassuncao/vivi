@@ -84,7 +84,7 @@ Numbers are kept as the digits you typed rather than parsed, so an integer past 
 
 ## Commands
 
-Every action above also has a name. `:` opens a command line listing what can run right now, with the keystroke printed beside each entry, so finding an action by name is also how you learn the key for it. Some entries have no key beside them. Three carry an argument no keystroke could: `:goto kv/app/prod/db` walks straight to a path, expanding each level on the way, `:policy <name>` jumps to a policy by name, and `:version 3` jumps to a version by number. The rest are the `:copy-<line>` family, one per line the `Command Reference` panel is showing: there are more of them than there are letters, which is why they live only in the palette.
+Every action above also has a name. `:` opens a command line listing what can run right now, with the keystroke printed beside each entry, so finding an action by name is also how you learn the key for it. Some entries have no key beside them. Three carry an argument no keystroke could: `:goto kv/app/prod/db` walks straight to a path, expanding each level on the way, `:policy <name>` jumps to a policy by name, and `:version 3` jumps to a version by number.
 
 [COMMANDS.md](COMMANDS.md) is the full reference.
 
@@ -98,7 +98,7 @@ The right column is two panels. The top one is the detail; the `Command Referenc
 
 The panel takes a fixed share of the column (about a fifth, never less than its six rows and never more than half) rather than the height of whatever it happens to hold. Sized to its contents it moved every time the cursor did, and the detail panel above it resized with it.
 
-It is named for what it holds rather than for a key, and it was not always. The title read `Copy` while `Y` and `C` were the keys that copied the path and the command to the clipboard and showed you neither, so the only way to check what you had was to paste it somewhere. Both keys are gone, and printing the lines instead makes them readable. A click on a line copies it, and each line also has a command that copies it (`:copy-path`, `:copy-read-command` and the rest, generated from whatever the panel is showing). vivi takes the mouse to read those clicks, so selecting text by dragging needs `shift` held in most terminals. The panel's bottom edge says so, and so does `?`. `vivi --no-mouse` leaves the mouse to the terminal instead: no clicks and no wheel, and text selects as it always does.
+It is named for what it holds rather than for a key, and it was not always. The title read `Copy` while `Y` and `C` were the keys that copied the path and the command to the clipboard and showed you neither, so the only way to check what you had was to paste it somewhere. Both keys are gone, and printing the lines instead makes them readable. A click on a line copies it. vivi takes the mouse to read those clicks, so selecting text by dragging needs `shift` held in most terminals. The panel's bottom edge says so, and so does `?`. `vivi --no-mouse` leaves the mouse to the terminal instead: no clicks and no wheel, and text selects as it always does.
 
 `c` puts the panel away when the detail needs the rows, sliding it out, and brings it back the same way. It stays away for the rest of the session, on every tab.
 

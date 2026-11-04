@@ -8,11 +8,10 @@ Colon commands also carry the two things a keystroke cannot: arguments, and the 
 
 ```
 ─────────────────────────────────────────────────────────────────────
-  :copy                    y   copy the secret, or one field
-  :copy-path                   kv/app/prod/db
-  :copy-policy-path            kv/data/app/prod/db
-  :copy-read-command           vault kv get -mount=kv app/prod/db
-:cop█
+  :reference               c   show or hide the Command Reference
+  :reload                  R   refetch what this tab is showing
+  :reveal                  r   reveal the secret, or one field
+:re█
 [enter] run  •  [tab] complete  •  [↑/↓] choose  •  [esc] cancel
 ```
 
@@ -29,7 +28,7 @@ Colon commands also carry the two things a keystroke cannot: arguments, and the 
 
 ### In what order
 
-Alphabetically, always. The list is read by name and narrowed by prefix, so the name is what the eye follows, and a family ends up together without anyone placing it: `:copy-path` and the rest of the generated copies sit under `:copy`. It also keeps the list still. The generated ones change with the cursor, and an order by importance would have them appearing in the middle of the list, moving the entry under the highlight.
+Alphabetically, always. The list is read by name and narrowed by prefix, so the name is what the eye follows, and a family ends up together without anyone placing it. It also keeps the list still: the set changes with the cursor, and an order by importance would have entries appearing in the middle of the list, moving the one under the highlight.
 
 ### What gets offered
 
@@ -37,9 +36,9 @@ One rule decides it:
 
 > Offer a command when it can do something, **or** when it can explain what is missing. Hide it only when it is meaningless here.
 
-Both halves matter. Offering what cannot work teaches a keystroke that will not work either, the way `:delete` on a folder used to. But hiding everything that cannot run right now is its own failure: a `:diff` that vanishes until two versions are marked never gets to say *"mark exactly two versions with space"*, and nobody learns that marking exists.
+Both halves matter. Offering what cannot work teaches a keystroke that will not work either, the way `:soft-delete-secret` on a folder used to. But hiding everything that cannot run right now is its own failure: a `:diff` that vanishes until two versions are marked never gets to say *"mark exactly two versions with space"*, and nobody learns that marking exists.
 
-So `:delete` is absent on a folder, and `:diff` is present with nothing marked.
+So `:soft-delete-secret` is absent on a folder, and `:diff` is present with nothing marked.
 
 ### Where `:` does not open
 
@@ -47,13 +46,13 @@ Inside the editor and inside the filter, `:` is a literal character: it is part 
 
 ## Name resolution
 
-Some names are prefixes of others (`:copy` of `:copy-path`, `:delete` of `:delete-metadata`). The rule is fixed:
+Some names are prefixes of others (`:copy` of `:copy-policy`, `:version` of `:versions`). The rule is fixed:
 
 1. an exact match wins, always;
 2. otherwise a unique prefix runs;
 3. otherwise nothing runs and the candidates stay on screen.
 
-So `:copy` is never ambiguous, `:cop` is, and `:del` resolves to nothing while `:delete` is exact.
+So `:version` is never ambiguous, `:re` is (`:reference`, `:reload`, `:reveal`), and `:rev` runs `:reveal`.
 
 ## Reference
 
@@ -75,19 +74,16 @@ So `:copy` is never ambiguous, `:cop` is, and `:del` resolves to nothing while `
 |---|---|---|
 | `:reveal` | `r` | a field is selected |
 | `:copy` | `y` | a secret is loaded (the whole secret from the list, the selected field from the pane) |
-| `:copy-<line>`, `:copy-<line>-command` | none | one per line the Command Reference is showing, see below |
 | `:versions` | `v` | the mount keeps history and the secret has some |
 | `:edit` | `e` | a secret is loaded |
 | `:create` | `a` | anywhere in a KV mount (a secret means: beside it) |
-| `:delete` | `d` | the cursor is on a secret |
-| `:delete-metadata` | `M` | the cursor is on a KV v2 secret |
+| `:soft-delete-secret` | `d` | the cursor is on a secret |
+| `:destroy-secret` | `M` | the cursor is on a KV v2 secret |
 | `:filter <pattern>` | `/` | always, on this tab |
 
 #### The Command Reference lines
 
-The panel in the bottom right prints the addresses and commands that reach what the cursor is on, one labelled line each. Every line it shows has a command that copies it, named for the line and for what the line holds: an address copies as `:copy-path`, `:copy-policy-path` or `:copy-policy-meta`, a CLI command says so, `:copy-read-command`, `:copy-field-command`, `:copy-version-command`, `:copy-metadata-command`, `:copy-list-command`. The suffix is the whole difference: `:copy-path` puts `kv/app/prod/db` on the clipboard, `:copy-list-command` puts `vault kv list -mount=kv app/prod` there, not what that command would print. The palette lists the line itself as the title, so what you will get is on screen before you press enter. The policy line is `policy-path` and not `policy` so that its command never collides with `:copy-policy` on the Policies tab, which copies a document rather than an address.
-
-They are generated from the panel rather than listed beside it, so the two cannot drift. That also means the set changes with the cursor: a folder has a path and a listing and nothing else, so it offers `:copy-path` and `:copy-list-command` and no others. A secret being created, which does not exist on the server yet, offers the path and the folder it will land in.
+The panel in the bottom right prints the addresses and commands that reach what the cursor is on, one labelled line each. A click on a line copies it: `path` puts `kv/app/prod/db` on the clipboard, `list` puts `vault kv list -mount=kv app/prod` there, not what that command would print. The lines are not in the palette: there is one per line the panel shows, and the set changes with the cursor.
 
 The clipboard is not the same act as selecting the text with a mouse, and it is the one that works over ssh.
 
@@ -122,7 +118,7 @@ Reached with `:versions` or `v`.
 | `:undelete` | `u` | the selected version is soft-deleted |
 | `:destroy` | `D` | the selected version is not already destroyed |
 
-The destructive ones still go through the confirmations they always did. `:destroy` and `:delete-metadata` are irreversible in Vault, and typing the name out is not treated as consent.
+The destructive ones still go through the confirmations they always did. `:destroy` and `:destroy-secret` are irreversible in Vault, and typing the name out is not treated as consent.
 
 ## Adding a command
 
@@ -138,11 +134,11 @@ The candidate list, the completion and the `?` panel's command section all read 
 |---|---|---|
 | `:edit` | `e` | yes |
 | `:create` | `a` | yes |
-| `:delete` | `d` | yes |
+| `:soft-delete-secret` | `d` | yes |
 | `:rollback` | `b` | yes |
 | `:undelete` | `u` | yes |
 | `:destroy` | `D` | yes |
-| `:delete-metadata` | `M` | yes |
+| `:destroy-secret` | `M` | yes |
 
 Everything else works unchanged, including `:versions`, `:diff`, `:copy` and the token panel's `n`: renewing your own token is not an operation on the Vault, and a session that cannot renew is one that ends in the middle of the reading it was opened for.
 

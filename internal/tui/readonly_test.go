@@ -42,8 +42,8 @@ func TestThePaletteHidesWritesInAReadOnlySession(t *testing.T) {
 	h.open("kv/app/prod/db")
 
 	writes := map[string]bool{
-		"edit": true, "create": true, "delete": true,
-		"rollback": true, "undelete": true, "destroy": true, "delete-metadata": true,
+		"edit": true, "create": true, "soft-delete-secret": true,
+		"rollback": true, "undelete": true, "destroy": true, "destroy-secret": true,
 	}
 	for _, c := range h.m.available() {
 		if writes[c.name] {

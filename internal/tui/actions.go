@@ -6,21 +6,11 @@ import (
 )
 
 // actions is the command table as bezel actions for its palette. The key is
-// only a hint: vivi still routes its own keys. A copy name not showing now is
-// declared refused, so typing it says "not available here".
+// only a hint: vivi still routes its own keys.
 func (m *Model) actions() []shell.Action {
-	all := append(append([]command(nil), commands...), m.copyCommands()...)
-	shown := make(map[string]bool, len(all))
-	out := make([]shell.Action, 0, len(all)+len(copyRowNames))
-	for _, c := range all {
-		shown[c.name] = true
+	out := make([]shell.Action, 0, len(commands))
+	for _, c := range commands {
 		out = append(out, m.action(c))
-	}
-	never := func(shell.Context) bool { return false }
-	for _, name := range copyRowNames {
-		if !shown[name] {
-			out = append(out, shell.Command(name, "", nil, shell.When(never)))
-		}
 	}
 	return out
 }

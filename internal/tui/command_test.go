@@ -99,12 +99,12 @@ func TestResolutionAcceptsAUniquePrefix(t *testing.T) {
 func TestResolutionRefusesAnAmbiguousPrefix(t *testing.T) {
 	h := newHarness(t)
 	h.open("kv/app/prod/db")
-	h.runCommand("cop")
+	h.runCommand("re")
 
 	if h.mode() != "command" {
 		t.Fatalf("an ambiguous prefix ran something: mode is %q", h.mode())
 	}
-	if !strings.Contains(h.view(), "copy-path") {
+	if !strings.Contains(h.view(), "reveal") {
 		t.Errorf("the candidates should be named: %q", h.view())
 	}
 }
@@ -183,7 +183,7 @@ func TestScopeIsJudgedAgainstTheModeUnderneath(t *testing.T) {
 // what is meaningless. Each of these was a real mismatch between a scope and the
 // guard inside the action it names.
 
-// ":delete" asked whether anything was selected; confirmDeleteCurrent asks
+// ":soft-delete-secret" asked whether anything was selected; confirmDeleteCurrent asks
 // whether a secret is. On a folder the command was offered and did nothing,
 // which taught that "d" does nothing too.
 func TestDeleteIsNotOfferedOnAFolder(t *testing.T) {
@@ -191,14 +191,14 @@ func TestDeleteIsNotOfferedOnAFolder(t *testing.T) {
 	h.focus("kv/")
 
 	for _, c := range h.m.available() {
-		if c.name == "delete" {
-			t.Error("delete is offered on a folder, where it cannot run")
+		if c.name == "soft-delete-secret" {
+			t.Error("soft-delete-secret is offered on a folder, where it cannot run")
 		}
 	}
 
 	h.open("kv/app/prod/db")
-	if !offers(h, "delete") {
-		t.Error("delete should be offered on a secret")
+	if !offers(h, "soft-delete-secret") {
+		t.Error("soft-delete-secret should be offered on a secret")
 	}
 }
 

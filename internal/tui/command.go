@@ -110,8 +110,6 @@ var commands = []command{
 		scope: hasField, run: onSecrets((*secrets.Model).RevealCurrentField)},
 	{name: "copy", key: "y", title: "copy the secret, or one field from the detail pane",
 		scope: hasField, run: onSecrets((*secrets.Model).CopyCurrentValue)},
-	// The per-line copies are not listed here: they are generated from whatever
-	// the Command Reference is showing. See copyCommands.
 	{name: "edit", key: "e", title: "edit the secret",
 		scope: func(m *Model) bool { return onSecretsTab(m) && m.secretsTab.HasSecret() && writable(m) },
 		run:   onSecrets((*secrets.Model).BeginEdit)},
@@ -126,7 +124,7 @@ var commands = []command{
 	// Two entries and not one, because "d" takes what the cursor is on and the
 	// cursor is on a field in the pane. One command wearing both meanings would
 	// have a title that is wrong in one of the two places.
-	{name: "delete", key: "d", title: "soft-delete the secret (on KV v1, for good)",
+	{name: "soft-delete-secret", key: "d", title: "soft-delete the secret (on KV v1, for good)",
 		scope: func(m *Model) bool {
 			return selectedSecret(m) && m.focus != ui.FocusDetail && writable(m)
 		},
@@ -136,14 +134,13 @@ var commands = []command{
 			return hasField(m) && m.focus == ui.FocusDetail && writable(m)
 		},
 		run: onSecrets((*secrets.Model).ConfirmDeleteField)},
-	{name: "delete-metadata", key: "M", title: "destroy the secret and its whole history",
+	{name: "destroy-secret", key: "M", title: "destroy the secret and its whole history",
 		scope: func(m *Model) bool {
 			return onSecretsTab(m) && m.secretsTab.SelectedVersioned() && m.focus != ui.FocusDetail && writable(m)
 		},
 		run: onSecrets((*secrets.Model).ConfirmDeleteMetadata)},
 
-	// Policies. The secrets tab's line is labelled "policy-path", so its
-	// generated ":copy-policy-path" and this ":copy-policy" never collide.
+	// Policies.
 	{name: "copy-policy", key: "y", title: "copy the policy document",
 		scope: func(m *Model) bool { return onPoliciesTab(m) && m.policiesTab.HasDoc() },
 		run:   issue(func(m *Model) tea.Cmd { return m.policiesTab.CopyDoc() })},
@@ -197,44 +194,6 @@ var commands = []command{
 		scope: always, run: act((*Model).openHelp)},
 	{name: "quit", key: "q", title: "leave vivi",
 		scope: always, run: func(*Model, string) tea.Cmd { return tea.Quit }},
-}
-
-// copyRowNames is every command a Command Reference line can generate. Only
-// actions reads it, so that an unavailable ":copy-metadata-command" says it is
-// not available here instead of reading as a typo. A name missing from it costs
-// a worse error message and nothing else.
-var copyRowNames = []string{
-	"copy-path", "copy-policy-path", "copy-policy-meta", // the addresses
-	"copy-read-command", "copy-field-command", "copy-version-command",
-	"copy-metadata-command", "copy-list-command",
-	"copy-name", // policies
-}
-
-// copyCommands mirrors the Command Reference: one command per line it is
-// showing, named for that line and carrying the line itself as its title, so
-// the palette answers "what will I get" without a second lookup.
-//
-// Generated rather than tabled. The panel already decides what is addressable
-// here - a folder has a path and a listing and no read - and a second list
-// would be a copy of that judgement, kept in step by hand.
-func (m *Model) copyCommands() []command {
-	rows := m.copyRows()
-	out := make([]command, 0, len(rows))
-	for _, row := range rows {
-		label, text := row.Label, row.Text
-		out = append(out, command{
-			name:  row.CommandName(),
-			title: text,
-			scope: always,
-			// The banner echoes the line, not the label: none of these carry a
-			// value - the panel already has them on screen - and seeing what
-			// landed on the clipboard is the whole confirmation.
-			run: func(m *Model, _ string) tea.Cmd {
-				return m.sh.Copy(text, "copied: "+text, "copy "+label)
-			},
-		})
-	}
-	return out
 }
 
 // The argument-taking commands. These are the ones with no keystroke behind

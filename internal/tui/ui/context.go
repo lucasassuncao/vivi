@@ -57,17 +57,4 @@ type HelpSection struct {
 // CopyRow is one line the copy panel offers.
 type CopyRow struct {
 	Label, Text string
-	// IsCommand separates a line holding a CLI command from one holding an
-	// address, which is the whole of the difference between their two names.
-	IsCommand bool
-}
-
-// CommandName is what the line is called in the palette. A command line says
-// so: ":copy-list-command" copies "vault kv list ...", where ":copy-path"
-// copies the path itself.
-func (r CopyRow) CommandName() string {
-	if r.IsCommand {
-		return "copy-" + r.Label + "-command"
-	}
-	return "copy-" + r.Label
 }

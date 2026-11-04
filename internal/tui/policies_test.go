@@ -118,8 +118,7 @@ func TestReloadRefetchesWhicheverTabIsShowing(t *testing.T) {
 	}
 }
 
-// Copying the policy was a key with no name anywhere. The secrets tab's line
-// is ":copy-policy-path", so the bare name stays free for this one.
+// Copying the policy was a key with no name anywhere.
 func TestThePolicyTabCanCopyByName(t *testing.T) {
 	h := newHarness(t)
 	h.runCommand("tab policies")

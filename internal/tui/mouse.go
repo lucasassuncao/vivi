@@ -104,8 +104,8 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	return nil
 }
 
-// copyRowAt copies the Command Reference row clicked, as its :copy command
-// does. Mouse reporting takes the terminal's own selection, which this repays.
+// copyRowAt copies the Command Reference row clicked. Mouse reporting takes
+// the terminal's own selection, which this repays.
 func (m *Model) copyRowAt(y int) tea.Cmd {
 	rows := m.copyRows()
 	if y < 0 || y >= len(rows) {

@@ -14,11 +14,7 @@ import (
 // the shell's - it is a field there so a test can replace it - so everything
 // below ends in a request rather than a write.
 
-func addrRow(label, text string) ui.CopyRow { return ui.CopyRow{Label: label, Text: text} }
-
-func cmdRow(label, text string) ui.CopyRow {
-	return ui.CopyRow{Label: label, Text: text, IsCommand: true}
-}
+func refRow(label, text string) ui.CopyRow { return ui.CopyRow{Label: label, Text: text} }
 
 // CopyRows addresses the node under the cursor. Built from the node and not the
 // loaded secret, so the commands survive a read in flight or a read that failed
@@ -39,55 +35,55 @@ func (m *Model) CopyRows(ctx ui.Context) []ui.CopyRow {
 		return nil
 	}
 
-	rows := []ui.CopyRow{addrRow("path", n.fullPath())}
+	rows := []ui.CopyRow{refRow("path", n.fullPath())}
 
 	// A secret being created does not exist yet: a read would fail and a put
 	// would spell the values out, which no line here does. The path and the
 	// folder it lands in are the honest answer until it is saved.
 	if editing != nil && editing.creating {
 		if n.parent != nil {
-			rows = append(rows, cmdRow("list", listCommand(n.parent)))
+			rows = append(rows, refRow("list", listCommand(n.parent)))
 		}
 		return rows
 	}
 
 	if n.kind != kindSecret {
 		if n.isKV() {
-			rows = append(rows, cmdRow("list", listCommand(n)))
+			rows = append(rows, refRow("list", listCommand(n)))
 		}
 		return rows
 	}
 
-	rows = append(rows, cmdRow("read", readCommand(n, 0, "")))
+	rows = append(rows, refRow("read", readCommand(n, 0, "")))
 	// The path a policy has to name, which on a v2 mount is not the path above
 	// it. This is the row people came here to copy without knowing it.
-	rows = append(rows, addrRow("policy-path", app.PolicyPath(n.mount, n.path, n.kvVersion)))
+	rows = append(rows, refRow("policy-path", app.PolicyPath(n.mount, n.path, n.kvVersion)))
 
 	// The selected field gets the command worth having: -field prints the value
 	// alone, no JSON around it, so it pipes. It does not flicker between
 	// siblings because the panel addresses the node the pane is showing.
 	if key := m.selectedFieldKey(); key != "" {
-		rows = append(rows, cmdRow("field", readCommand(n, 0, key)))
+		rows = append(rows, refRow("field", readCommand(n, 0, key)))
 	}
 
 	// Only when a historical version is on screen. On the current one the
 	// -version flag names what the plain read already returns, and a command
 	// that pins today's version would go stale the moment someone writes.
 	if m.showingHistorical() {
-		rows = append(rows, cmdRow("version", readCommand(n, m.secretVersion, "")))
+		rows = append(rows, refRow("version", readCommand(n, m.secretVersion, "")))
 	}
 
 	if n.kvVersion == vault.KV2 {
-		rows = append(rows, cmdRow("metadata",
+		rows = append(rows, refRow("metadata",
 			fmt.Sprintf("vault kv metadata get -mount=%s %s", n.mount, n.path)))
 	}
 	if n.parent != nil {
-		rows = append(rows, cmdRow("list", listCommand(n.parent)))
+		rows = append(rows, refRow("list", listCommand(n.parent)))
 	}
 	// The path a policy names for the history, the metadata and delete. Last, so
 	// a short panel gives it up before the commands.
 	if p := app.MetadataPolicyPath(n.mount, n.path, n.kvVersion); p != "" {
-		rows = append(rows, addrRow("policy-meta", p))
+		rows = append(rows, refRow("policy-meta", p))
 	}
 	return rows
 }

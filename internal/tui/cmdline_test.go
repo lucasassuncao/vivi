@@ -112,12 +112,12 @@ func TestTabLeavesRoomForAnArgument(t *testing.T) {
 func TestAnAmbiguousLineStaysOpenAndSaysSo(t *testing.T) {
 	h := newHarness(t)
 	h.open("kv/app/prod/db")
-	h.runCommand("cop")
+	h.runCommand("re")
 
 	if h.mode() != "command" {
 		t.Fatalf("an ambiguous line closed the command line: mode is %q", h.mode())
 	}
-	if !strings.Contains(h.view(), "cop is ambiguous") {
+	if !strings.Contains(h.view(), "re is ambiguous") {
 		t.Errorf("the ambiguity is not on screen: %q", h.view())
 	}
 }
@@ -126,10 +126,10 @@ func TestAnAmbiguousLineStaysOpenAndSaysSo(t *testing.T) {
 func TestArrowsPickFromTheList(t *testing.T) {
 	h := newHarness(t)
 	h.open("kv/app/prod/db")
-	h.typeCommand("copy-")
+	h.typeCommand("re")
 
 	h.press("down") // the first candidate, whichever name sorts first
-	if !strings.Contains(h.view(), "› :copy-") {
+	if !strings.Contains(h.view(), "› :re") {
 		t.Fatalf("down did not highlight a candidate: %q", h.view())
 	}
 
@@ -144,7 +144,7 @@ func TestArrowsPickFromTheList(t *testing.T) {
 func TestNothingIsPickedUntilTheUserPicks(t *testing.T) {
 	h := newHarness(t)
 	h.open("kv/app/prod/db")
-	h.typeCommand("copy-")
+	h.typeCommand("re")
 
 	if strings.Contains(h.view(), "› :") {
 		t.Errorf("a candidate was highlighted before the user chose one: %q", h.view())
@@ -156,9 +156,9 @@ func TestNothingIsPickedUntilTheUserPicks(t *testing.T) {
 func TestTypingClearsThePick(t *testing.T) {
 	h := newHarness(t)
 	h.open("kv/app/prod/db")
-	h.typeCommand("copy-")
+	h.typeCommand("re")
 	h.press("down")
-	h.typeText("p")
+	h.typeText("v")
 
 	if strings.Contains(h.view(), "› :") {
 		t.Errorf("the pick survived a keystroke that changed the list: %q", h.view())
@@ -411,15 +411,6 @@ func TestAnAnswerLandingUnderThePaletteReachesTheTab(t *testing.T) {
 	}
 	if len(h.visiblePaths()) == 0 {
 		t.Error("the listing answered under the palette never reached the tree")
-	}
-}
-
-// A generated copy name that is not showing now is refused, not unknown.
-func TestAHiddenCopyCommandIsNotAvailableHere(t *testing.T) {
-	h := newHarness(t)
-	h.runCommand("copy-version-command")
-	if !strings.Contains(h.m.banner(), "copy-version-command is not available here") {
-		t.Errorf("banner is %q", h.m.banner())
 	}
 }
 

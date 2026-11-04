@@ -356,14 +356,14 @@ func (m *Model) CopyRows(ui.Context) []ui.CopyRow {
 		// A backend vivi cannot enumerate has no read endpoint to name either,
 		// and guessing one would print a command that fails.
 		if p := vault.RoleReadPath(meth, role.Name); p != "" {
-			rows = append(rows, ui.CopyRow{Label: "read", Text: "vault read " + p, IsCommand: true})
+			rows = append(rows, ui.CopyRow{Label: "read", Text: "vault read " + p})
 		}
 		return rows
 	}
 
 	return []ui.CopyRow{
 		{Label: "path", Text: "auth/" + meth.Path},
-		{Label: "list", Text: "vault auth list", IsCommand: true},
+		{Label: "list", Text: "vault auth list"},
 	}
 }
 

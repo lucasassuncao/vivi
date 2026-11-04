@@ -314,7 +314,7 @@ func (m *Model) CopyRows(ui.Context) []ui.CopyRow {
 	name := m.names[m.cursor]
 	return []ui.CopyRow{
 		{Label: "name", Text: name},
-		{Label: "read", Text: "vault policy read " + name, IsCommand: true},
+		{Label: "read", Text: "vault policy read " + name},
 	}
 }
 
