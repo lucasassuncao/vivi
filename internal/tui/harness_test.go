@@ -14,6 +14,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/lucasassuncao/vivi/internal/tui/ui"
 	"github.com/lucasassuncao/vivi/internal/vault/fake"
 )
 
@@ -44,6 +45,15 @@ func newHarness(t *testing.T) *harness {
 
 	h.m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	h.run(m.Init())
+	return h
+}
+
+// macHarness is newHarness on a Mac, whose terminal keeps Home, End, PgUp and
+// PgDn for its own scrollback.
+func macHarness(t *testing.T) *harness {
+	t.Helper()
+	h := newHarness(t)
+	h.m.keys = ui.KeysFor("darwin")
 	return h
 }
 

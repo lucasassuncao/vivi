@@ -92,6 +92,10 @@ type Options struct {
 	// NoMouse leaves the mouse to the terminal, as --no-mouse asks: no clicks
 	// or wheel here, and text selects without shift.
 	NoMouse bool
+
+	// Keys is the keyboard vivi moves with. The zero value is a PC keyboard;
+	// the composition root passes the one of the system vivi runs on.
+	Keys ui.Keys
 }
 
 // Model is the bubbletea model for vivi.
@@ -145,6 +149,8 @@ type Model struct {
 
 	// noMouse is --no-mouse: the terminal keeps the mouse.
 	noMouse bool
+	// keys is the keyboard in front of vivi, fixed for the session.
+	keys ui.Keys
 	// dragging is a press on the edge between the columns, until its release.
 	dragging bool
 
@@ -183,6 +189,7 @@ func New(opts Options) *Model {
 		version:     opts.Version,
 		debug:       opts.Debug,
 		noMouse:     opts.NoMouse,
+		keys:        opts.Keys,
 	}
 
 	// The tabs that reach a server are built here and not in the literal: each
@@ -399,6 +406,7 @@ func (m *Model) uiContext() ui.Context {
 		TokenPolicies: policies,
 		Access:        m.access,
 		ReadOnly:      m.readOnly,
+		Keys:          m.keys,
 	}
 }
 

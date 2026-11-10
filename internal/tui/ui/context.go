@@ -46,6 +46,10 @@ type Context struct {
 	// and to say why rather than only that.
 	Access   app.Access
 	ReadOnly app.ReadOnlyPolicy
+
+	// Keys is the keyboard in front of vivi, which decides the keys a list
+	// moves on and the ones the legend and the help name.
+	Keys Keys
 }
 
 // HelpSection is one titled block of the "?" panel.

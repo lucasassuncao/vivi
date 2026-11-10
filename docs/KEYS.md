@@ -8,7 +8,7 @@ Navigation is arrow keys and `enter`, everywhere. Letters are only ever actions,
 | `→` | go further in: open a folder, or step into the detail pane |
 | `←` | come back out: close a folder, or leave the detail pane |
 | `enter` | the same as `→`, wherever the cursor is |
-| `home` / `end` | top / bottom |
+| `home` / `end` | top / bottom (`g` / `G` on a Mac) |
 | `tab` / `shift+tab`, `1`-`4` | switch tab: next, previous, or by number |
 | `/` | fuzzy filter over what is already loaded |
 | `r` | reveal, without copying: every field of the secret from the list, the selected field from the detail pane |
@@ -24,6 +24,8 @@ Navigation is arrow keys and `enter`, everywhere. Letters are only ever actions,
 | `c` | hide the Command Reference and give its rows to the detail, or bring it back |
 | `:` | run any of these by name, listed as you type |
 | `?` | help  ·  `q` quit |
+
+On a Mac the terminal keeps `home`, `end`, `pgup` and `pgdn` for its own scrollback, and a MacBook has none of the four, so there `g` / `G` go to the top and bottom and `ctrl+u` / `ctrl+d` scroll half a page: the keys `less` and `vim` move with, and the only letters in vivi that move rather than act. The legend and `?` name whichever pair works where vivi runs.
 
 `?` lists the keys for the tab you are on, plus the ones that work anywhere. The legend under the panes is contextual too, and drops the rare actions first when the terminal is narrow. Its first row is how to get around, closing on `?`, and its second what acts on the cursor; when keys are dropped, the count of them names `?` instead.
 
@@ -107,8 +109,8 @@ The detail panel is the one that scrolls: content longer than the terminal, a po
 | Key | Does |
 | --- | --- |
 | `↑` / `↓` | move between the secret's fields, or scroll the document |
-| `home` / `end` | first / last |
-| `pgup` / `pgdn` | half a page |
+| `home` / `end` | first / last (`g` / `G` on a Mac) |
+| `pgup` / `pgdn` | half a page (`ctrl+u` / `ctrl+d` on a Mac) |
 | `esc` / `←` | back to the list |
 
 The focused pane wears the accent border and an inverted title, and its last row says how much of the document is below. On a secret the arrows walk the fields rather than scrolling by line, because the field under the cursor is what `r` and `y` act on. `y` follows that focus: from the list it takes the whole secret, since the cursor there is on a secret and not on a field.
@@ -117,7 +119,7 @@ In the version list (`v`):
 
 | Key | Does |
 | --- | --- |
-| `↑` / `↓`, `home` / `end` | move |
+| `↑` / `↓`, `home` / `end` (`g` / `G` on a Mac) | move |
 | `space` | mark a version |
 | `enter` | read the marked version |
 | `d` | diff two marked versions |

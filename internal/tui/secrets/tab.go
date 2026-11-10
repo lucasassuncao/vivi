@@ -58,11 +58,11 @@ func (m *Model) key(msg tea.KeyPressMsg) tea.Cmd {
 	case filtering:
 		return m.keyFilter(msg)
 	case choosingVersion:
-		return m.keyVersions(msg)
+		return m.keyVersions(m.keys.StandIn(msg))
 	case showingDiff:
-		return m.keyDiff(mode.diff, msg)
+		return m.keyDiff(mode.diff, m.keys.StandIn(msg))
 	}
-	return m.keySecrets(msg)
+	return m.keySecrets(m.keys.StandIn(msg))
 }
 
 // ClickList is a click on row y of the tree, under the filter's line when it
@@ -112,7 +112,7 @@ func (m *Model) KeyDetail(msg tea.KeyPressMsg, ctx ui.Context) (tea.Cmd, bool) {
 		return nil, false
 	}
 
-	switch msg.String() {
+	switch ctx.Keys.StandIn(msg).String() {
 	case "down":
 		m.moveField(1)
 	case "up":
@@ -255,7 +255,7 @@ func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
 		// The actions belong here too, since the shell lets them fall through.
 		// r and y name what they act on, and the words differ from the list's:
 		// here the cursor is on a field, there it is on the secret.
-		head := []legend.Entry{legend.New("esc/←", "back to list"), legend.New("pgup/pgdn", "scroll")}
+		head := []legend.Entry{legend.New("esc/←", "back to list"), legend.New(ctx.Keys.Pages(), "scroll")}
 		return status, ui.ListLegend("fields", head,
 			ui.Actions(m.actions(m.revealFieldLegend(), copyFieldLegend, paneDeleteLegend, true)...)...)
 	}
@@ -317,7 +317,7 @@ func (m *Model) Help(ctx ui.Context) ui.HelpSection {
 	if ctx.Focus == ui.FocusDetail {
 		return ui.HelpSection{Title: "Detail pane", Rows: [][2]string{
 			{"↑ / ↓", "move between fields, or scroll"},
-			{"pgup / pgdn", "half a page"},
+			{ctx.Keys.PagesHelp(), "half a page"},
 			{"r", "reveal the selected field, or hide it again"},
 			{"y", "copy the selected field, without showing it"},
 			{"e", "edit the secret   ·   x removes a field in there too"},

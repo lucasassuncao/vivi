@@ -126,8 +126,8 @@ func (m *Model) RenderDetail(width int, ctx ui.Context) string {
 	return b.String()
 }
 
-func (m *Model) Key(msg tea.KeyPressMsg, _ ui.Context) tea.Cmd {
-	switch msg.String() {
+func (m *Model) Key(msg tea.KeyPressMsg, ctx ui.Context) tea.Cmd {
+	switch ctx.Keys.StandIn(msg).String() {
 	case "down":
 		return m.moveTo(m.cursor + 1)
 	case "up":
@@ -151,14 +151,14 @@ func (m *Model) moveTo(i int) tea.Cmd {
 
 func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
 	if ctx.Focus == ui.FocusDetail {
-		return status, ui.ScrollLegend()
+		return status, ui.ScrollLegend(ctx.Keys)
 	}
 	return status, ui.ListLegend("move", []legend.Entry{legend.New("→/enter", "detail")})
 }
 
 func (m *Model) Help(ctx ui.Context) ui.HelpSection {
 	if ctx.Focus == ui.FocusDetail {
-		return ui.HelpSection{Title: "Operation detail", Rows: ui.DocumentKeys()}
+		return ui.HelpSection{Title: "Operation detail", Rows: ui.DocumentKeys(ctx.Keys)}
 	}
 	return ui.HelpSection{Title: "Activity", Rows: [][2]string{
 		{"↑ / ↓", "move"},

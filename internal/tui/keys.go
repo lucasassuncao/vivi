@@ -155,6 +155,8 @@ func (m *Model) keyBrowse(msg tea.KeyPressMsg) tea.Cmd {
 // key. On a secret the arrows walk fields, because the one under the cursor is
 // what r and y act on; elsewhere nothing is selectable, so they scroll.
 func (m *Model) keyDetail(msg tea.KeyPressMsg) (tea.Cmd, bool) {
+	msg = m.keys.StandIn(msg)
+
 	// A pane holding a list of its own answers the arrows itself: the row under
 	// the cursor is what the other keys act on, so scrolling past it would
 	// leave them aimed at something off screen.

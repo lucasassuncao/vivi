@@ -207,10 +207,11 @@ func (m *Model) RenderDetail(width int, ctx ui.Context) string {
 	return b.String()
 }
 
-func (m *Model) Key(msg tea.KeyPressMsg, _ ui.Context) tea.Cmd {
+func (m *Model) Key(msg tea.KeyPressMsg, ctx ui.Context) tea.Cmd {
 	// focus rides to the end because every arm here finishes the same way: the
 	// cursors are clamped and the pane goes back to its first line.
 	var focus bool
+	msg = ctx.Keys.StandIn(msg)
 
 	switch msg.String() {
 	case "down":
@@ -309,7 +310,7 @@ func (m *Model) clampCursors() {
 
 func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
 	if ctx.Focus == ui.FocusDetail {
-		return status, append(ui.ScrollLegend(), ui.Actions(legend.New("p", "go to policy"), legend.New("R", "reload"))...)
+		return status, append(ui.ScrollLegend(ctx.Keys), ui.Actions(legend.New("p", "go to policy"), legend.New("R", "reload"))...)
 	}
 	return status, ui.ListLegend("move", []legend.Entry{legend.New("→/enter", "roles, then detail")},
 		ui.Actions(legend.New("p", "go to policy"), legend.New("R", "reload"))...)
@@ -317,7 +318,7 @@ func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
 
 func (m *Model) Help(ctx ui.Context) ui.HelpSection {
 	if ctx.Focus == ui.FocusDetail {
-		return ui.HelpSection{Title: "Role detail", Rows: ui.DocumentKeys(
+		return ui.HelpSection{Title: "Role detail", Rows: ui.DocumentKeys(ctx.Keys,
 			[2]string{"p", "go to the policy this role grants"},
 			[2]string{"R", "reload the methods"},
 		)}

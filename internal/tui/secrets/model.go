@@ -130,6 +130,7 @@ type Model struct {
 	access        app.Access
 	readOnly      app.ReadOnlyPolicy
 	tokenPolicies []string
+	keys          ui.Keys
 
 	// outbox is what the tab wants the shell to do, collected during a call and
 	// handed up when it returns. It exists so notify and fail read here exactly
@@ -160,6 +161,7 @@ func (m *Model) adopt(ctx ui.Context) {
 	m.width, m.height = ctx.Width, ctx.Height
 	m.access, m.readOnly = ctx.Access, ctx.ReadOnly
 	m.tokenPolicies = ctx.TokenPolicies
+	m.keys = ctx.Keys
 }
 
 // drain hands the shell everything the call collected, alongside whatever

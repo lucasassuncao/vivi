@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"runtime/debug"
 	"syscall"
 
@@ -20,6 +21,7 @@ import (
 
 	"github.com/lucasassuncao/vivi/internal/app"
 	"github.com/lucasassuncao/vivi/internal/tui"
+	"github.com/lucasassuncao/vivi/internal/tui/ui"
 	"github.com/lucasassuncao/vivi/internal/updater"
 	"github.com/lucasassuncao/vivi/internal/vault"
 	"github.com/spf13/cobra"
@@ -170,7 +172,7 @@ func run(ctx context.Context, th theme.Theme, readOnly app.ReadOnlyPolicy, noMou
 	model := tui.New(tui.Options{
 		Client: client, Token: token, Theme: th, Ctx: ctx,
 		Access: access, ReadOnly: readOnly, Version: Version, Debug: debug,
-		NoMouse: noMouse,
+		NoMouse: noMouse, Keys: ui.KeysFor(runtime.GOOS),
 	})
 	// The alternate screen is asked for by the model's View now, the way every
 	// terminal mode is in bubbletea v2: the option that used to be here is gone.

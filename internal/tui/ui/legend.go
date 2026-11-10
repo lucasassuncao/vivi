@@ -38,9 +38,9 @@ func Actions(entries ...legend.Entry) []legend.Entry {
 // ScrollLegend is the legend for a focused pane holding a document rather than
 // a list of fields. Secrets has its own: there the arrows walk fields. Each
 // caller appends what its own tab can do.
-func ScrollLegend() []legend.Entry {
+func ScrollLegend(k Keys) []legend.Entry {
 	return ListLegend("scroll",
-		[]legend.Entry{legend.New("esc/←", "back to list"), legend.New("pgup/pgdn", "half a page")})
+		[]legend.Entry{legend.New("esc/←", "back to list"), legend.New(k.Pages(), "half a page")})
 }
 
 // HintLine draws entries as one line of "[key] action". The footer packs the
@@ -54,10 +54,10 @@ func (s Styles) HintLine(entries []legend.Entry) string {
 func (s Styles) Hint() legend.Style { return legend.Style{Key: s.LegendKey, Text: s.LegendText} }
 
 // DocumentKeys is what the "?" panel says about a focused document pane.
-func DocumentKeys(extra ...[2]string) [][2]string {
+func DocumentKeys(k Keys, extra ...[2]string) [][2]string {
 	return append([][2]string{
 		{"↑ / ↓", "scroll"},
-		{"pgup / pgdn", "half a page"},
+		{k.PagesHelp(), "half a page"},
 		{"esc / ←", "back to the list"},
 	}, extra...)
 }

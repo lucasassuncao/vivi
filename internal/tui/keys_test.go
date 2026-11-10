@@ -171,24 +171,37 @@ func TestHomeAndEndMoveEveryTabsList(t *testing.T) {
 		},
 	}
 
-	for name, tab := range cursors {
-		t.Run(name, func(t *testing.T) {
-			h := newHarness(t)
-			tab.open(h)
+	// A Mac's terminal keeps Home and End for its scrollback, so there g and G
+	// are what reach the ends.
+	keyboards := []struct {
+		name        string
+		harness     func(*testing.T) *harness
+		top, bottom string
+	}{
+		{"home and end", newHarness, "home", "end"},
+		{"g and G on a Mac", macHarness, "g", "G"},
+	}
 
-			if n := tab.size(h); n < 2 {
-				t.Fatalf("the %s list holds %d entries, too few to move through", name, n)
-			}
+	for _, kb := range keyboards {
+		for name, tab := range cursors {
+			t.Run(kb.name+"/"+name, func(t *testing.T) {
+				h := kb.harness(t)
+				tab.open(h)
 
-			h.press("end")
-			if got, want := tab.cursor(h), tab.size(h)-1; got != want {
-				t.Errorf("end left the cursor at %d, want %d", got, want)
-			}
+				if n := tab.size(h); n < 2 {
+					t.Fatalf("the %s list holds %d entries, too few to move through", name, n)
+				}
 
-			h.press("home")
-			if got := tab.cursor(h); got != 0 {
-				t.Errorf("home left the cursor at %d, want 0", got)
-			}
-		})
+				h.press(kb.bottom)
+				if got, want := tab.cursor(h), tab.size(h)-1; got != want {
+					t.Errorf("%s left the cursor at %d, want %d", kb.bottom, got, want)
+				}
+
+				h.press(kb.top)
+				if got := tab.cursor(h); got != 0 {
+					t.Errorf("%s left the cursor at %d, want 0", kb.top, got)
+				}
+			})
+		}
 	}
 }
