@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/lucasassuncao/bezel/shell"
 	"github.com/lucasassuncao/vivi/internal/app"
 	"github.com/lucasassuncao/vivi/internal/tui/ui"
 	"github.com/lucasassuncao/vivi/internal/vault"
@@ -178,5 +179,5 @@ func (m *Model) copyWholeSecret() tea.Cmd {
 
 // copy hands the text to the shell, which owns the clipboard.
 func (m *Model) copy(op, what, text string) tea.Cmd {
-	return ui.Emit(ui.CopyMsg{Op: op, What: what, Text: text})
+	return shell.Copy(text, what, op)
 }

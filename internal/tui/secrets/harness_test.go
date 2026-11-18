@@ -6,6 +6,7 @@ import (
 	"github.com/lucasassuncao/bezel/component/input"
 	"github.com/lucasassuncao/bezel/component/textbox"
 	"github.com/lucasassuncao/bezel/overlay"
+	"github.com/lucasassuncao/bezel/shell"
 	"github.com/lucasassuncao/bezel/theme"
 	"strings"
 	"testing"
@@ -33,7 +34,7 @@ type harness struct {
 	ctx    ui.Context
 
 	banners []ui.BannerMsg
-	copies  []ui.CopyMsg
+	copies  []shell.CopyMsg
 	records []ui.RecordedMsg
 }
 
@@ -134,7 +135,7 @@ func (h *harness) run(cmd tea.Cmd) {
 	case ui.BannerMsg:
 		h.banners = append(h.banners, msg)
 		return
-	case ui.CopyMsg:
+	case shell.CopyMsg:
 		h.copies = append(h.copies, msg)
 		return
 	case ui.RecordedMsg:

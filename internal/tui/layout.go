@@ -131,7 +131,7 @@ func (m *Model) copyPanelRoom() int {
 // wide enough for them. Not the height: the legend asks, and the legend is
 // part of what the body's height is measured against.
 func (m *Model) referenceFits() bool {
-	return m.width >= narrowLimit && draw.InnerRect(m.sh.Rect(paneDetail)).W >= copyPanelCols &&
+	return m.width >= narrowLimit && m.sh.Inner(paneDetail).W >= copyPanelCols &&
 		len(m.copyRows()) > 0
 }
 

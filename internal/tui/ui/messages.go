@@ -26,15 +26,6 @@ type FocusMsg struct{ Focus Focus }
 // the parent's: the pane is the frame, and the frame is not a tab's to scroll.
 type ScrollTopMsg struct{}
 
-// CopyMsg asks for text to reach the system clipboard. The clipboard is the
-// parent's because a component writing it directly could not be tested without
-// a real one, which is why Model.clip is a field in the first place.
-type CopyMsg struct {
-	// Op names the action for the activity log, What names it for the banner.
-	Op, What string
-	Text     string
-}
-
 // ScrollToLineMsg brings one line of the detail pane into view, which is what
 // a selection that has scrolled out of sight needs: it is worse than no
 // selection, because the keys still act on it.

@@ -90,7 +90,7 @@ func (m *Model) click(msg tea.MouseClickMsg) tea.Cmd {
 	switch pane {
 	case paneList:
 		m.focus = ui.FocusList
-		return m.currentTab().ClickList(in.Y, draw.InnerRect(m.sh.Rect(paneList)).H, m.uiContext())
+		return m.currentTab().ClickList(in.Y, m.sh.Inner(paneList).H, m.uiContext())
 	case paneDetail:
 		if in.Y < 0 {
 			cmd, _ := m.clickTitle(at.X) // the top edge, where the title is a path

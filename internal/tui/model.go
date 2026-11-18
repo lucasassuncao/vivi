@@ -279,9 +279,6 @@ func (m *Model) update(msg tea.Msg) tea.Cmd {
 		m.scrollToLine(msg.Line)
 		return nil
 
-	case ui.CopyMsg:
-		return m.sh.Copy(msg.Text, msg.What, msg.Op)
-
 	case ui.RecordedMsg:
 		m.activityTab.Record(msg.Op, msg.Path, msg.Detail, msg.Err)
 		return nil

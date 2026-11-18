@@ -9,6 +9,7 @@ import (
 	"github.com/lucasassuncao/bezel/draw"
 	"github.com/lucasassuncao/bezel/layout"
 	"github.com/lucasassuncao/bezel/legend"
+	"github.com/lucasassuncao/bezel/shell"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -270,7 +271,7 @@ func (m *Model) CopyDoc() tea.Cmd {
 	if m.hcl == "" {
 		return nil
 	}
-	return ui.Emit(ui.CopyMsg{Op: "copy policy", What: "policy copied", Text: m.hcl})
+	return shell.Copy(m.hcl, "policy copied", "copy policy")
 }
 
 func (m *Model) Legend(ctx ui.Context) (status string, keys []legend.Entry) {
